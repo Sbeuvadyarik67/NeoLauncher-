@@ -1,0 +1,43 @@
+{
+  "projects": {
+    "neobrain": {
+      "name": "NeoBrain",
+      "version": "2.1.2",
+      "path": "C:/Users/Вадим/Desktop/Общее/Вадим разработка/_РАБОЧАЯ ВЕРСИЯ_/github/NeoBrain/main.py",
+      "icon": "🧠",
+      "color": "#ff2d8a",
+      "description": "Локальный AI-чат с персонажами",
+      "tags": [
+        "AI",
+        "Chat"
+      ],
+      "type": "python"
+    },
+    "neospace": {
+      "name": "NeoSpace-Pro",
+      "version": "1.0.0",
+      "path": "C:/Users/Вадим/Desktop/Общее/Вадим разработка/_РАБОЧАЯ ВЕРСИЯ_/github/NeoSpace/virtual_minimal.py",
+      "icon": "🖥️",
+      "color": "#a855f7",
+      "description": "Виртуальная среда для экспериментов",
+      "tags": [
+        "Virtual",
+        "Sandbox"
+      ],
+      "type": "python"
+    },
+    "whydoes": {
+      "name": "Why-Does-This-Exist",
+      "version": "1.0.0",
+      "path": "C:/Users/Вадим/NeoLauncher-/projects/whydoes/abstract_madness.py",
+      "icon": "🌀",
+      "color": "#fbbf24",
+      "description": "Генератор визуального безумия",
+      "tags": [
+        "Visual",
+        "Art"
+      ],
+      "type": "python"
+    }
+  }
+}
