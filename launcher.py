@@ -1,50 +1,340 @@
+import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 import json
 import os
 import sys
 import subprocess
-import threading
 import math
 import random
 from datetime import datetime
+from PIL import Image, ImageDraw, ImageTk
+import pywinstyles
+import requests
+import zipfile
+import shutil
+import tempfile
+import threading
+import time
 
-class NeoBrainLauncher:
+# ============================================================
+# НАСТРОЙКА CUSTOMTKINTER
+# ============================================================
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("dark-blue")
+
+# ============================================================
+# КОНСТАНТЫ ДЛЯ ОБНОВЛЕНИЙ
+# ============================================================
+GITHUB_REPO = "Sbeuvadyarik67/NeoLauncher-"
+GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}"
+VERSION_FILE = "version.json"
+CURRENT_VERSION = "3.0.0"
+
+# ============================================================
+# КЛАСС ОБНОВЛЯТОРА
+# ============================================================
+
+class Updater:
+    def __init__(self, parent):
+        self.parent = parent
+        self.update_window = None
+        self.progress_bar = None
+        self.status_label = None
+        
+    def check_for_updates(self, show_progress=True):
+        try:
+            if show_progress:
+                self.show_update_window()
+                self.update_status("🔄 Проверка обновлений...")
+            
+            response = requests.get(f"{GITHUB_API}/releases/latest", timeout=10)
+            
+            if response.status_code != 200:
+                self.update_status("❌ Не удалось проверить обновления")
+                return None
+            
+            release_data = response.json()
+            latest_version = release_data.get("tag_name", "").replace("v", "")
+            
+            if show_progress:
+                self.update_status(f"📡 Версия: {latest_version}")
+            
+            if latest_version > CURRENT_VERSION:
+                return {
+                    "version": latest_version,
+                    "download_url": release_data.get("zipball_url"),
+                    "body": release_data.get("body", "Нет описания изменений"),
+                    "created_at": release_data.get("created_at", "")
+                }
+            else:
+                if show_progress:
+                    self.update_status("✅ У вас последняя версия!")
+                    self.close_update_window()
+                return None
+                
+        except Exception as e:
+            self.update_status(f"❌ Ошибка: {str(e)}")
+            return None
+    
+    def download_and_update(self, update_info):
+        try:
+            self.update_status("📥 Загрузка обновления...")
+            
+            response = requests.get(update_info["download_url"], stream=True, timeout=30)
+            total_size = int(response.headers.get('content-length', 0))
+            
+            temp_dir = tempfile.mkdtemp()
+            zip_path = os.path.join(temp_dir, "update.zip")
+            
+            downloaded = 0
+            with open(zip_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        progress = (downloaded / total_size) * 100
+                        self.update_progress(progress)
+            
+            self.update_status("📦 Распаковка...")
+            
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            
+            extracted_dir = None
+            for item in os.listdir(temp_dir):
+                if os.path.isdir(os.path.join(temp_dir, item)) and item.startswith("Sbeuvadyarik67-NeoLauncher-"):
+                    extracted_dir = os.path.join(temp_dir, item)
+                    break
+            
+            if not extracted_dir:
+                raise Exception("Не найдены файлы обновления")
+            
+            self.update_status("📋 Установка обновления...")
+            
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            files_to_update = []
+            
+            for root, dirs, files in os.walk(extracted_dir):
+                for file in files:
+                    if file.endswith('.py') or file == 'manifest.json' or file == 'version.json':
+                        rel_path = os.path.relpath(os.path.join(root, file), extracted_dir)
+                        files_to_update.append(rel_path)
+            
+            for rel_path in files_to_update:
+                src = os.path.join(extracted_dir, rel_path)
+                dst = os.path.join(current_dir, rel_path)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(src, dst)
+                self.update_status(f"📄 {rel_path}")
+            
+            version_data = {
+                "version": update_info["version"],
+                "updated_at": datetime.now().isoformat()
+            }
+            with open(os.path.join(current_dir, VERSION_FILE), 'w', encoding='utf-8') as f:
+                json.dump(version_data, f, indent=2, ensure_ascii=False)
+            
+            self.update_status("✅ Обновление установлено!")
+            time.sleep(1)
+            
+            messagebox.showinfo(
+                "✅ Обновление установлено",
+                f"Обновление до версии {update_info['version']} успешно установлено!\n\n"
+                f"Что нового:\n{update_info['body'][:500]}\n\n"
+                "Приложение будет перезапущено."
+            )
+            
+            self.restart_app()
+            
+        except Exception as e:
+            self.update_status(f"❌ Ошибка обновления: {str(e)}")
+            messagebox.showerror("Ошибка", f"Не удалось установить обновление:\n{str(e)}")
+    
+    def show_update_window(self):
+        if self.update_window:
+            return
+            
+        self.update_window = ctk.CTkToplevel(self.parent.root)
+        self.update_window.title("✦ Обновление ✦")
+        self.update_window.geometry("500x200")
+        self.update_window.configure(fg_color=self.parent.theme["bg"])
+        self.update_window.transient(self.parent.root)
+        self.update_window.grab_set()
+        
+        ctk.CTkLabel(
+            self.update_window,
+            text="✦ Проверка обновлений",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=self.parent.theme["text"]
+        ).pack(pady=(20, 15))
+        
+        self.status_label = ctk.CTkLabel(
+            self.update_window,
+            text="Подготовка...",
+            font=ctk.CTkFont(size=12),
+            text_color=self.parent.theme["text_secondary"]
+        )
+        self.status_label.pack(pady=(0, 15))
+        
+        self.progress_bar = ctk.CTkProgressBar(
+            self.update_window,
+            width=400,
+            height=10,
+            corner_radius=5
+        )
+        self.progress_bar.pack(pady=(0, 20))
+        self.progress_bar.set(0)
+        
+        ctk.CTkButton(
+            self.update_window,
+            text="Закрыть",
+            width=100,
+            height=35,
+            corner_radius=8,
+            fg_color=self.parent.theme["glass"],
+            hover_color=self.parent.theme["glass_border"],
+            text_color=self.parent.theme["text_secondary"],
+            command=self.close_update_window
+        ).pack()
+    
+    def update_status(self, text):
+        if self.status_label:
+            self.status_label.configure(text=text)
+            self.update_window.update()
+    
+    def update_progress(self, value):
+        if self.progress_bar:
+            self.progress_bar.set(value / 100)
+            self.update_window.update()
+    
+    def close_update_window(self):
+        if self.update_window:
+            self.update_window.destroy()
+            self.update_window = None
+            self.status_label = None
+            self.progress_bar = None
+    
+    def restart_app(self):
+        python = sys.executable
+        script = os.path.abspath(sys.argv[0])
+        subprocess.Popen([python, script])
+        self.parent.root.quit()
+        self.parent.root.destroy()
+
+# ============================================================
+# ГЛАВНЫЙ КЛАСС ЛАУНЧЕРА
+# ============================================================
+
+class NeoLauncher:
     def __init__(self, root):
         self.root = root
-        self.root.title("✦ NeoBrain Launcher ✦")
+        self.root.title("✦ NeoLauncher ✦")
         self.root.geometry("1200x750")
-        self.root.minsize(1000, 600)
-        self.root.configure(bg="#050510")
-        self.root.resizable(True, True)
+        self.root.minsize(1000, 650)
         
-        # Цветовая схема
-        self.bg_dark = "#050510"
-        self.bg_medium = "#0a0a20"
-        self.bg_light = "#151530"
-        self.card_bg = "#0f0f2a"
-        self.card_hover = "#1a1a4a"
+        self.root.overrideredirect(True)
         
-        self.text_primary = "#f0e8ff"
-        self.text_secondary = "#8a7aaa"
-        self.text_accent = "#ff2d8a"
-        
-        # Неоновые цвета
-        self.colors = {
-            "pink": "#ff2d8a",
-            "hot_pink": "#ff1493",
-            "purple": "#a855f7",
-            "deep_purple": "#7c3aed",
-            "red": "#ff0040",
-            "blue": "#3b82f6",
-            "cyan": "#06b6d4",
-            "gold": "#fbbf24",
-            "green": "#10b981",
-            "white": "#ffffff"
+        # ============================================================
+        # ТЕМЫ
+        # ============================================================
+        self.themes = {
+            "nebula": {
+                "name": "Туманность",
+                "bg": "#0a0a12",
+                "surface": "#1a1a3e",
+                "surface_hover": "#2a2a5e",
+                "glass": "#1a1a3e",
+                "glass_border": "#7c3aed",
+                "text": "#f0ecff",
+                "text_secondary": "#a898cc",
+                "accent": "#7c3aed",
+                "accent_hover": "#8b5cf6",
+                "accent_light": "#a78bfa",
+                "gradient1": "#0a0a12",
+                "gradient2": "#1a0a30",
+                "gradient3": "#2a0a40"
+            },
+            "aurora": {
+                "name": "Северное сияние",
+                "bg": "#080e1a",
+                "surface": "#0a1a3a",
+                "surface_hover": "#1a2a4a",
+                "glass": "#0a1a3a",
+                "glass_border": "#06b6d4",
+                "text": "#d4f4ff",
+                "text_secondary": "#7ab8d4",
+                "accent": "#06b6d4",
+                "accent_hover": "#67e8f9",
+                "accent_light": "#7dd3fc",
+                "gradient1": "#080e1a",
+                "gradient2": "#0a1a2a",
+                "gradient3": "#0a2a3a"
+            },
+            "ember": {
+                "name": "Пламя",
+                "bg": "#1a0805",
+                "surface": "#2a1a0e",
+                "surface_hover": "#3a2a1a",
+                "glass": "#2a1a0e",
+                "glass_border": "#f97316",
+                "text": "#ffdcc4",
+                "text_secondary": "#cc8a7a",
+                "accent": "#f97316",
+                "accent_hover": "#fb923c",
+                "accent_light": "#fdba74",
+                "gradient1": "#1a0805",
+                "gradient2": "#2a100a",
+                "gradient3": "#3a1a0f"
+            },
+            "crystal": {
+                "name": "Хрусталь",
+                "bg": "#080e1a",
+                "surface": "#0a2a3a",
+                "surface_hover": "#1a3a4a",
+                "glass": "#0a2a3a",
+                "glass_border": "#22d3ee",
+                "text": "#d4f4ff",
+                "text_secondary": "#7ab8d4",
+                "accent": "#22d3ee",
+                "accent_hover": "#67e8f9",
+                "accent_light": "#a5f3fc",
+                "gradient1": "#080e1a",
+                "gradient2": "#0a1a2a",
+                "gradient3": "#0a2a3a"
+            },
+            "royal": {
+                "name": "Королевский",
+                "bg": "#0a080f",
+                "surface": "#1a0a3e",
+                "surface_hover": "#2a1a5e",
+                "glass": "#1a0a3e",
+                "glass_border": "#e879f9",
+                "text": "#f0d8ff",
+                "text_secondary": "#b888dd",
+                "accent": "#e879f9",
+                "accent_hover": "#f0abfc",
+                "accent_light": "#f8b8fc",
+                "gradient1": "#0a080f",
+                "gradient2": "#1a0a2e",
+                "gradient3": "#2a0a4e"
+            }
         }
         
-        self.animation_angle = 0
+        self.current_theme = "nebula"
+        self.theme = self.themes[self.current_theme]
         
+        # ============================================================
+        # ПАРАМЕТРЫ
+        # ============================================================
+        self.anim_time = 0
+        self.flow_particles = []
+        self.hover_index = -1
+        self.updater = Updater(self)
+        
+        # ============================================================
+        # ЗАГРУЗКА ДАННЫХ
+        # ============================================================
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.manifest_path = os.path.join(self.base_dir, "manifest.json")
         self.settings_path = os.path.join(self.base_dir, "launcher_settings.json")
@@ -52,438 +342,861 @@ class NeoBrainLauncher:
         self.manifest = self.load_manifest()
         self.settings = self.load_settings()
         
+        # ============================================================
+        # ПОСТРОЕНИЕ UI
+        # ============================================================
         self.setup_ui()
+        self.apply_glass_effects()
+        self.create_flow_particles()
         self.render_projects()
+        
         self.animate()
+        self.make_draggable()
+        self.fade_in()
+        
+        # Проверяем обновления в фоновом режиме
+        self.check_for_updates_background()
+    
+    # ============================================================
+    # ПРОВЕРКА ОБНОВЛЕНИЙ
+    # ============================================================
+    
+    def check_for_updates_background(self):
+        def check():
+            update_info = self.updater.check_for_updates(show_progress=False)
+            if update_info:
+                self.root.after(0, lambda: self.show_update_notification(update_info))
+        
+        thread = threading.Thread(target=check, daemon=True)
+        thread.start()
+    
+    def show_update_notification(self, update_info):
+        result = messagebox.askyesno(
+            "🔄 Доступно обновление",
+            f"Доступна новая версия: v{update_info['version']}\n\n"
+            f"Что нового:\n{update_info['body'][:300]}{'...' if len(update_info['body']) > 300 else ''}\n\n"
+            "Установить обновление?"
+        )
+        
+        if result:
+            def update_thread():
+                self.updater.download_and_update(update_info)
+            
+            thread = threading.Thread(target=update_thread, daemon=True)
+            thread.start()
+    
+    # ============================================================
+    # ЗАГРУЗКА ДАННЫХ
+    # ============================================================
     
     def load_manifest(self):
-        default_manifest = {
+        default = {
             "projects": {
                 "neobrain": {
                     "name": "NeoBrain",
                     "version": "2.1.2",
-                    "path": "C:/Users/Вадим/Desktop/Общее/Вадим разработка/_РАБОЧАЯ ВЕРСИЯ_/github/NeoBrain/main.py",
+                    "path": "projects/neobrain.py",
                     "icon": "🧠",
-                    "color": "#ff2d8a",
+                    "color": "#7c3aed",
                     "description": "Локальный AI-чат с персонажами",
-                    "tags": ["AI", "Chat"],
-                    "type": "python"
+                    "tags": ["AI", "Chat"]
                 },
                 "neospace": {
                     "name": "NeoSpace-Pro",
                     "version": "1.0.0",
-                    "path": "C:/Users/Вадим/Desktop/Общее/Вадим разработка/_РАБОЧАЯ ВЕРСИЯ_/github/NeoSpace/virtual_minimal.py",
+                    "path": "projects/neospace.py",
                     "icon": "🖥️",
-                    "color": "#8b5cf6",
+                    "color": "#06b6d4",
                     "description": "Виртуальная среда для экспериментов",
-                    "tags": ["Virtual", "Sandbox"],
-                    "type": "python"
+                    "tags": ["Virtual", "Sandbox"]
                 },
                 "whydoes": {
                     "name": "Why-Does-This-Exist",
                     "version": "1.0.0",
-                    "path": "C:/Users/Вадим/NeoLauncher-/projects/whydoes/abstract_madness.py",
+                    "path": "projects/whydoes.py",
                     "icon": "🌀",
-                    "color": "#fbbf24",
+                    "color": "#f97316",
                     "description": "Генератор визуального безумия",
-                    "tags": ["Visual", "Art"],
-                    "type": "python"
+                    "tags": ["Visual", "Art"]
                 }
             }
         }
-        
         try:
             if os.path.exists(self.manifest_path):
                 with open(self.manifest_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
             else:
                 with open(self.manifest_path, 'w', encoding='utf-8') as f:
-                    json.dump(default_manifest, f, indent=2, ensure_ascii=False)
-                return default_manifest
-        except Exception as e:
-            print(f"Ошибка загрузки манифеста: {e}")
-            return default_manifest
+                    json.dump(default, f, indent=2, ensure_ascii=False)
+                return default
+        except:
+            return default
     
     def load_settings(self):
-        default_settings = {"auto_update": True}
+        default = {"theme": "nebula", "auto_update": True}
         try:
             if os.path.exists(self.settings_path):
                 with open(self.settings_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if "theme" in data and data["theme"] in self.themes:
+                        self.current_theme = data["theme"]
+                        self.theme = self.themes[self.current_theme]
+                    return data
             else:
                 with open(self.settings_path, 'w', encoding='utf-8') as f:
-                    json.dump(default_settings, f, indent=2, ensure_ascii=False)
-                return default_settings
+                    json.dump(default, f, indent=2, ensure_ascii=False)
+                return default
         except:
-            return default_settings
+            return default
+    
+    # ============================================================
+    # ПОСТРОЕНИЕ UI
+    # ============================================================
     
     def setup_ui(self):
-        self.main_frame = tk.Frame(self.root, bg=self.bg_dark)
-        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=40, pady=30)
+        self.main_frame = ctk.CTkFrame(
+            self.root,
+            fg_color=self.theme["bg"],
+            corner_radius=0
+        )
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
         
         self.bg_canvas = tk.Canvas(
             self.main_frame,
-            bg=self.bg_dark,
-            highlightthickness=0
+            bg=self.theme["bg"],
+            highlightthickness=0,
+            bd=0
         )
         self.bg_canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self.create_deep_gradient_bg()
         
-        header_frame = tk.Frame(self.main_frame, bg=self.bg_dark)
-        header_frame.place(relx=0, rely=0, relwidth=1, height=100)
+        self.create_background()
         
-        title = tk.Label(
-            header_frame,
-            text="✦ NeoBrain",
-            font=("Segoe UI", 34, "bold"),
-            bg=self.bg_dark,
-            fg=self.text_primary
+        # ============================================================
+        # ВЕРХНЯЯ ПАНЕЛЬ
+        # ============================================================
+        self.nav_panel = ctk.CTkFrame(
+            self.main_frame,
+            fg_color=self.theme["glass"],
+            corner_radius=16,
+            width=int(self.root.winfo_width() * 0.96),
+            height=75
         )
-        title.place(relx=0.03, rely=0.5, anchor=tk.W)
+        self.nav_panel.place(relx=0.02, rely=0.02)
         
-        version_label = tk.Label(
-            header_frame,
-            text="v2.0",
-            font=("Segoe UI", 13, "bold"),
-            bg=self.bg_dark,
-            fg=self.text_secondary
+        logo_frame = ctk.CTkFrame(
+            self.nav_panel,
+            fg_color="transparent"
         )
-        version_label.place(relx=0.2, rely=0.5, anchor=tk.W)
+        logo_frame.place(relx=0.04, rely=0.5, anchor=tk.W)
         
-        settings_btn = tk.Button(
-            header_frame,
-            text="✦",
-            font=("Segoe UI", 20),
-            bg=self.bg_dark,
-            fg="#ff2d8a",
-            relief=tk.FLAT,
-            command=self.open_settings,
-            cursor="hand2"
+        self.logo = ctk.CTkLabel(
+            logo_frame,
+            text="✦ NeoLauncher",
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color=self.theme["text"]
         )
-        settings_btn.place(relx=0.98, rely=0.5, anchor=tk.E)
+        self.logo.pack(side=tk.LEFT)
         
-        status_frame = tk.Frame(self.main_frame, bg=self.bg_dark)
-        status_frame.place(relx=0, rely=0.15, relwidth=1, height=45)
+        version_frame = ctk.CTkFrame(
+            logo_frame,
+            fg_color=self.theme["accent"],
+            corner_radius=8,
+            width=50,
+            height=28
+        )
+        version_frame.pack(side=tk.LEFT, padx=(12, 0))
+        version_frame.pack_propagate(False)
+        
+        version = ctk.CTkLabel(
+            version_frame,
+            text=f"v{CURRENT_VERSION}",
+            font=ctk.CTkFont(size=10, weight="bold"),
+            text_color="white"
+        )
+        version.pack(expand=True)
+        
+        self.theme_label = ctk.CTkLabel(
+            logo_frame,
+            text=f"• {self.theme['name']}",
+            font=ctk.CTkFont(size=12),
+            text_color=self.theme["accent_light"]
+        )
+        self.theme_label.pack(side=tk.LEFT, padx=(12, 0))
+        
+        btn_frame = ctk.CTkFrame(
+            self.nav_panel,
+            fg_color="transparent"
+        )
+        btn_frame.place(relx=0.96, rely=0.5, anchor=tk.E)
+        
+        self.nav_buttons = []
+        buttons = [
+            ("🔄", self.check_updates_manual),
+            ("🎨", self.cycle_theme),
+            ("⚙", self.open_settings),
+            ("✕", self.close_app)
+        ]
+        
+        for text, cmd in buttons:
+            btn = ctk.CTkButton(
+                btn_frame,
+                text=text,
+                width=42,
+                height=42,
+                corner_radius=10,
+                fg_color="transparent",
+                hover_color=self.theme["glass"],
+                text_color=self.theme["text_secondary"],
+                font=ctk.CTkFont(size=18),
+                command=cmd
+            )
+            btn.pack(side=tk.LEFT, padx=4)
+            self.nav_buttons.append(btn)
+            
+            def on_enter(e, b=btn, t=text):
+                if t == "✕":
+                    b.configure(text_color="#ef4444")
+                elif t == "🔄":
+                    b.configure(text_color=self.theme["accent"])
+                else:
+                    b.configure(text_color=self.theme["accent"])
+            
+            def on_leave(e, b=btn):
+                b.configure(text_color=self.theme["text_secondary"])
+            
+            btn.bind("<Enter>", on_enter)
+            btn.bind("<Leave>", on_leave)
+        
+        # ============================================================
+        # СТАТУС БАР
+        # ============================================================
+        self.status_frame = ctk.CTkFrame(
+            self.main_frame,
+            fg_color="transparent",
+            height=40,
+            width=int(self.root.winfo_width() * 0.96)
+        )
+        self.status_frame.place(relx=0.02, rely=0.13)
         
         self.status_dot = tk.Canvas(
-            status_frame,
-            bg=self.bg_dark,
+            self.status_frame,
+            bg=self.theme["bg"],
             width=14,
             height=14,
             highlightthickness=0
         )
-        self.status_dot.place(relx=0.03, rely=0.5, anchor=tk.W)
-        self.status_dot_id = self.status_dot.create_oval(2, 2, 12, 12, fill="#ff2d8a", outline="")
+        self.status_dot.place(relx=0.005, rely=0.5, anchor=tk.W)
+        self.dot_id = self.status_dot.create_oval(2, 2, 12, 12, fill="#10b981", outline="")
+        self.dot_ring = self.status_dot.create_oval(0, 0, 14, 14, outline="#10b981", width=1)
         
-        self.status_label = tk.Label(
-            status_frame,
-            text="✦ СИСТЕМА АКТИВНА",
-            font=("Segoe UI", 11, "bold"),
-            bg=self.bg_dark,
-            fg=self.text_secondary
+        self.status_label = ctk.CTkLabel(
+            self.status_frame,
+            text="● Система активна",
+            font=ctk.CTkFont(size=11),
+            text_color=self.theme["text_secondary"]
         )
-        self.status_label.place(relx=0.055, rely=0.5, anchor=tk.W)
+        self.status_label.place(relx=0.028, rely=0.5, anchor=tk.W)
         
-        self.cards_frame = tk.Frame(self.main_frame, bg=self.bg_dark)
-        self.cards_frame.place(relx=0, rely=0.23, relwidth=1, relheight=0.7)
-        
-        footer = tk.Frame(self.main_frame, bg=self.bg_dark)
-        footer.place(relx=0, rely=0.95, relwidth=1, height=35)
-        
-        footer_text = tk.Label(
-            footer,
-            text="✦ ВСЕ ПРОЕКТЫ РАСПРОСТРАНЯЮТСЯ БЕСПЛАТНО ✦",
-            font=("Segoe UI", 9),
-            bg=self.bg_dark,
-            fg="#2a2a5a"
+        self.count_label = ctk.CTkLabel(
+            self.status_frame,
+            text="✦ 0 проектов",
+            font=ctk.CTkFont(size=11),
+            text_color=self.theme["text_secondary"]
         )
-        footer_text.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        self.count_label.place(relx=0.98, rely=0.5, anchor=tk.E)
+        
+        # ============================================================
+        # КАРТОЧКИ
+        # ============================================================
+        self.cards_frame = ctk.CTkScrollableFrame(
+            self.main_frame,
+            fg_color="transparent",
+            corner_radius=0,
+            width=int(self.root.winfo_width() * 0.96),
+            height=int(self.root.winfo_height() * 0.80)
+        )
+        self.cards_frame.place(relx=0.02, rely=0.17)
     
-    def create_deep_gradient_bg(self):
-        width = self.root.winfo_screenwidth()
-        height = self.root.winfo_screenheight()
+    def check_updates_manual(self):
+        update_info = self.updater.check_for_updates(show_progress=True)
+        if update_info:
+            self.status_label.configure(text=f"🔄 Доступно обновление v{update_info['version']}")
+            result = messagebox.askyesno(
+                "🔄 Доступно обновление",
+                f"Доступна новая версия: v{update_info['version']}\n\n"
+                f"Что нового:\n{update_info['body'][:500]}{'...' if len(update_info['body']) > 500 else ''}\n\n"
+                "Установить обновление?"
+            )
+            
+            if result:
+                def update_thread():
+                    self.updater.download_and_update(update_info)
+                
+                thread = threading.Thread(target=update_thread, daemon=True)
+                thread.start()
+        else:
+            self.status_label.configure(text="✅ У вас последняя версия")
+    
+    def apply_glass_effects(self):
+        try:
+            pywinstyles.set_opacity(self.nav_panel, color="#000001")
+            pywinstyles.set_shadow(self.nav_panel, True)
+        except Exception as e:
+            pass
+    
+    def create_background(self):
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
         
-        colors = [(5, 5, 16), (10, 5, 20), (15, 10, 30), (5, 5, 16)]
+        colors = [
+            self.theme["gradient1"],
+            self.theme["gradient2"],
+            self.theme["gradient3"]
+        ]
+        
         steps = 100
-        
         for i in range(steps):
             t = i / steps
-            idx = t * (len(colors) - 1)
-            idx1 = int(idx)
-            idx2 = min(idx1 + 1, len(colors) - 1)
-            frac = idx - idx1
+            if t < 0.5:
+                t2 = t * 2
+                color = self.interpolate_color(colors[0], colors[1], t2)
+            else:
+                t2 = (t - 0.5) * 2
+                color = self.interpolate_color(colors[1], colors[2], t2)
             
-            r1, g1, b1 = colors[idx1]
-            r2, g2, b2 = colors[idx2]
-            
-            r = int(r1 + (r2 - r1) * frac)
-            g = int(g1 + (g2 - g1) * frac)
-            b = int(b1 + (b2 - b1) * frac)
-            
-            color = f"#{r:02x}{g:02x}{b:02x}"
             y = i * (height / steps)
             self.bg_canvas.create_rectangle(
                 0, y, width, y + height/steps + 1,
-                fill=color, outline=color
+                fill=color, outline=color,
+                tags="bg_gradient"
             )
+    
+    def interpolate_color(self, c1, c2, t):
+        r1, g1, b1 = self.hex_to_rgb(c1)
+        r2, g2, b2 = self.hex_to_rgb(c2)
         
-        self.neon_particles = []
-        for _ in range(25):
+        r = int(r1 + (r2 - r1) * t)
+        g = int(g1 + (g2 - g1) * t)
+        b = int(b1 + (b2 - b1) * t)
+        
+        return f"#{r:02x}{g:02x}{b:02x}"
+    
+    def hex_to_rgb(self, color):
+        color = color.lstrip('#')
+        return tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
+    
+    # ============================================================
+    # ЧАСТИЦЫ
+    # ============================================================
+    
+    def create_flow_particles(self):
+        self.flow_particles = []
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        
+        for _ in range(30):
             x = random.randint(0, width)
             y = random.randint(0, height)
-            size = random.randint(2, 5)
-            colors_list = ["#ff2d8a", "#ff1493", "#a855f7", "#7c3aed", "#fbbf24"]
-            color = random.choice(colors_list)
+            size = random.uniform(2, 5)
             
-            particle_id = self.bg_canvas.create_oval(
-                x - size, y - size,
-                x + size, y + size,
-                fill=color, outline="",
-                tags="neon_particle"
+            img = Image.new('RGBA', (int(size*2)+4, int(size*2)+4), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            r, g, b = self.hex_to_rgb(self.theme["accent"])
+            draw.ellipse((2, 2, size*2+2, size*2+2), fill=(r, g, b, 60))
+            
+            photo = ImageTk.PhotoImage(img)
+            
+            pid = self.bg_canvas.create_image(
+                x, y,
+                image=photo,
+                tags="flow_particle"
             )
             
-            self.neon_particles.append({
-                "id": particle_id,
-                "x": x, "y": y,
+            self.flow_particles.append({
+                "id": pid,
+                "image": photo,
+                "x": x,
+                "y": y,
                 "vx": random.uniform(-0.3, 0.3),
                 "vy": random.uniform(-0.3, 0.3),
                 "size": size,
-                "color": color
+                "phase": random.uniform(0, 2 * math.pi)
             })
     
+    # ============================================================
+    # КАРТОЧКИ
+    # ============================================================
+    
     def render_projects(self):
-        print("=== render_projects вызван ===")
         for widget in self.cards_frame.winfo_children():
             widget.destroy()
         
         projects = self.manifest.get("projects", {})
-        print(f"Найдено проектов: {len(projects)}")
         
         if not projects:
-            self.status_label.config(text="❌ Нет проектов в манифесте!")
+            empty = ctk.CTkLabel(
+                self.cards_frame,
+                text="📭 Нет проектов",
+                font=ctk.CTkFont(size=24),
+                text_color=self.theme["text_secondary"]
+            )
+            empty.pack(expand=True)
             return
         
-        row_frame = tk.Frame(self.cards_frame, bg=self.bg_dark)
-        row_frame.pack(fill=tk.BOTH, expand=True)
+        self.count_label.configure(text=f"✦ {len(projects)} проектов")
         
-        for idx, (project_id, project_data) in enumerate(projects.items()):
-            print(f"Создаём карточку для: {project_id}")
-            self.create_project_card(row_frame, project_id, project_data, idx)
-        
-        self.status_label.config(text=f"✦ {len(projects)} ПРОЕКТОВ ГОТОВЫ К ЗАПУСКУ")
+        cards_per_row = 3
+        for idx, (proj_id, proj_data) in enumerate(projects.items()):
+            row = idx // cards_per_row
+            col = idx % cards_per_row
+            
+            card_container = ctk.CTkFrame(
+                self.cards_frame,
+                fg_color="transparent"
+            )
+            card_container.grid(row=row, column=col, padx=15, pady=15, sticky="nsew")
+            self.cards_frame.grid_columnconfigure(col, weight=1)
+            self.cards_frame.grid_rowconfigure(row, weight=1)
+            
+            self.create_glass_card(card_container, proj_id, proj_data)
     
-    def create_project_card(self, parent, project_id, project_data, idx):
-        """Упрощённая карточка, которая точно отображается"""
-        glow_color = project_data.get("color", "#ff2d8a")
-        name = project_data.get("name", project_id)
-        icon = project_data.get("icon", "📦")
-        description = project_data.get("description", "")
+    def create_glass_card(self, parent, proj_id, proj_data):
+        color = proj_data.get("color", self.theme["accent"])
         
-        # Карточка
-        card = tk.Frame(
+        card = ctk.CTkFrame(
             parent,
-            bg=self.card_bg,
-            relief=tk.FLAT,
-            bd=2,
-            highlightbackground=glow_color,
-            highlightthickness=2,
-            width=300,
+            fg_color=self.theme["glass"],
+            corner_radius=16,
+            border_width=1,
+            border_color=self.theme["glass_border"],
+            width=320,
             height=350
         )
-        card.grid(row=0, column=idx, sticky="nsew", padx=15, pady=10)
-        parent.grid_columnconfigure(idx, weight=1)
+        card.pack(fill=tk.BOTH, expand=True)
         card.pack_propagate(False)
         
-        # Внутренний контейнер
-        inner = tk.Frame(card, bg=self.card_bg)
-        inner.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # Иконка
-        icon_label = tk.Label(
-            inner,
-            text=icon,
-            font=("Segoe UI", 36),
-            bg=self.card_bg,
-            fg=glow_color
+        top_bar = ctk.CTkFrame(
+            card,
+            fg_color=color,
+            height=4,
+            corner_radius=0
         )
-        icon_label.pack(pady=(0, 10))
+        top_bar.pack(fill=tk.X, side=tk.TOP)
         
-        # Название
-        name_label = tk.Label(
-            inner,
-            text=name,
-            font=("Segoe UI", 18, "bold"),
-            bg=self.card_bg,
-            fg=self.text_primary
+        inner = ctk.CTkFrame(
+            card,
+            fg_color="transparent"
         )
-        name_label.pack()
+        inner.pack(fill=tk.BOTH, expand=True, padx=25, pady=20)
         
-        # Теги
-        tags = project_data.get("tags", [])
+        icon_frame = ctk.CTkFrame(
+            inner,
+            fg_color="transparent"
+        )
+        icon_frame.pack(pady=(5, 10))
+        
+        icon_canvas = tk.Canvas(
+            icon_frame,
+            bg=self.theme["glass"],
+            width=70,
+            height=70,
+            highlightthickness=0
+        )
+        icon_canvas.pack()
+        
+        icon_canvas.create_oval(5, 5, 65, 65, fill=self.lighten_color(color, 0.3), outline="")
+        icon_canvas.create_oval(10, 10, 60, 60, fill=self.lighten_color(color, 0.1), outline="")
+        
+        icon = ctk.CTkLabel(
+            icon_canvas,
+            text=proj_data.get("icon", "📦"),
+            font=ctk.CTkFont(size=32),
+            text_color=color
+        )
+        icon.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        
+        name = ctk.CTkLabel(
+            inner,
+            text=proj_data.get("name", proj_id),
+            font=ctk.CTkFont(size=17, weight="bold"),
+            text_color=self.theme["text"]
+        )
+        name.pack()
+        
+        tags = proj_data.get("tags", [])
         if tags:
-            tag_text = "  ".join([f"#{tag}" for tag in tags])
-            tag_label = tk.Label(
+            tag_frame = ctk.CTkFrame(
                 inner,
-                text=tag_text,
-                font=("Segoe UI", 9),
-                bg=self.card_bg,
-                fg=self.text_secondary
+                fg_color="transparent"
             )
-            tag_label.pack(pady=(5, 5))
+            tag_frame.pack(pady=(6, 4))
+            
+            for tag in tags[:2]:
+                tag_label = ctk.CTkLabel(
+                    tag_frame,
+                    text=f"#{tag}",
+                    font=ctk.CTkFont(size=9),
+                    text_color=self.theme["accent_light"],
+                    fg_color=self.theme["glass"],
+                    corner_radius=6,
+                    padx=10,
+                    pady=2
+                )
+                tag_label.pack(side=tk.LEFT, padx=3)
         
-        # Описание
-        desc_label = tk.Label(
+        desc = ctk.CTkLabel(
             inner,
-            text=description,
-            font=("Segoe UI", 10),
-            bg=self.card_bg,
-            fg=self.text_secondary,
-            wraplength=240,
-            justify=tk.CENTER
+            text=proj_data.get("description", ""),
+            font=ctk.CTkFont(size=10),
+            text_color=self.theme["text_secondary"],
+            wraplength=260,
+            justify="center"
         )
-        desc_label.pack(pady=(0, 10))
+        desc.pack(pady=(5, 12))
         
-        # Статус
-        status = self.get_project_status(project_id, project_data)
-        status_label = tk.Label(
+        version = ctk.CTkLabel(
             inner,
-            text=status["text"],
-            font=("Segoe UI", 10),
-            bg=self.card_bg,
-            fg=status["color"]
+            text=f"v{proj_data.get('version', '1.0.0')}",
+            font=ctk.CTkFont(size=9),
+            text_color=self.theme["text_secondary"]
         )
-        status_label.pack()
+        version.pack(pady=(0, 10))
         
-        version = project_data.get("version", "?")
-        version_label = tk.Label(
+        launch_btn = ctk.CTkButton(
             inner,
-            text=f"v{version}",
-            font=("Segoe UI", 9),
-            bg=self.card_bg,
-            fg="#3a3a6a"
-        )
-        version_label.pack(pady=(2, 8))
-        
-        # Кнопка запуска
-        launch_btn = tk.Button(
-            inner,
-            text="▶ ЗАПУСТИТЬ",
-            font=("Segoe UI", 11, "bold"),
-            bg=glow_color,
-            fg="#ffffff",
-            relief=tk.FLAT,
-            padx=20,
-            pady=8,
-            command=lambda pid=project_id: self.launch_project(pid),
-            cursor="hand2"
+            text="▶  Запустить",
+            font=ctk.CTkFont(size=10, weight="bold"),
+            fg_color=color,
+            hover_color=self.darken_color(color, 0.2),
+            text_color="white",
+            corner_radius=8,
+            width=140,
+            height=36,
+            command=lambda pid=proj_id: self.launch_project(pid)
         )
         launch_btn.pack()
         
-        # Эффекты наведения
         def on_enter(e):
-            card.config(highlightbackground="#ffffff", highlightthickness=3)
-            inner.config(bg=self.card_hover)
-            for child in inner.winfo_children():
-                if isinstance(child, tk.Frame):
-                    child.config(bg=self.card_hover)
-                elif isinstance(child, tk.Label) and child.cget("bg") != self.bg_dark:
-                    child.config(bg=self.card_hover)
+            card.configure(fg_color=self.theme["surface_hover"])
+            icon_canvas.configure(bg=self.theme["surface_hover"])
+            launch_btn.configure(fg_color=self.darken_color(color, 0.2))
         
         def on_leave(e):
-            card.config(highlightbackground=glow_color, highlightthickness=2)
-            inner.config(bg=self.card_bg)
-            for child in inner.winfo_children():
-                if isinstance(child, tk.Frame):
-                    child.config(bg=self.card_bg)
-                elif isinstance(child, tk.Label) and child.cget("bg") != self.bg_dark:
-                    child.config(bg=self.card_bg)
+            card.configure(fg_color=self.theme["glass"])
+            icon_canvas.configure(bg=self.theme["glass"])
+            launch_btn.configure(fg_color=color)
         
         card.bind("<Enter>", on_enter)
         card.bind("<Leave>", on_leave)
+        
+        return card
     
-    def get_project_status(self, project_id, project_data):
-        project_path = project_data.get("path")
-        if project_path and os.path.exists(project_path):
-            return {"text": "✦ УСТАНОВЛЕН", "color": "#10b981"}
-        else:
-            return {"text": "✧ НЕ НАЙДЕН", "color": "#ff2d8a"}
+    def lighten_color(self, color, factor):
+        r, g, b = self.hex_to_rgb(color)
+        r = min(255, int(r + (255 - r) * factor))
+        g = min(255, int(g + (255 - g) * factor))
+        b = min(255, int(b + (255 - b) * factor))
+        return f"#{r:02x}{g:02x}{b:02x}"
     
-    def animate(self):
-        self.animation_angle += 0.03
-        
-        dot_size = 4 + 3 * (0.5 + 0.5 * math.sin(self.animation_angle * 3))
-        self.status_dot.coords(self.status_dot_id, 7 - dot_size/2, 7 - dot_size/2, 7 + dot_size/2, 7 + dot_size/2)
-        
-        neon_colors = ["#ff2d8a", "#ff1493", "#a855f7", "#7c3aed", "#fbbf24", "#ff2d8a"]
-        idx = int((self.animation_angle * 0.4) % len(neon_colors))
-        self.status_dot.itemconfig(self.status_dot_id, fill=neon_colors[idx])
-        
-        for particle in self.neon_particles:
-            x = particle["x"] + particle["vx"]
-            y = particle["y"] + particle["vy"]
-            if x < 0 or x > self.root.winfo_screenwidth(): particle["vx"] *= -1
-            if y < 0 or y > self.root.winfo_screenheight(): particle["vy"] *= -1
-            particle["x"] = x
-            particle["y"] = y
-            size = particle["size"] * (0.6 + 0.4 * math.sin(self.animation_angle * 2 + particle["x"]))
-            self.bg_canvas.coords(particle["id"], x - size, y - size, x + size, y + size)
-        
-        self.root.after(50, self.animate)
+    def darken_color(self, color, factor):
+        r, g, b = self.hex_to_rgb(color)
+        r = int(r * (1 - factor))
+        g = int(g * (1 - factor))
+        b = int(b * (1 - factor))
+        return f"#{r:02x}{g:02x}{b:02x}"
+    
+    # ============================================================
+    # ЗАПУСК ПРОЕКТОВ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+    # ============================================================
     
     def launch_project(self, project_id):
-        project_data = self.manifest["projects"].get(project_id)
-        if not project_data:
+        proj_data = self.manifest["projects"].get(project_id)
+        if not proj_data:
             messagebox.showerror("Ошибка", f"Проект {project_id} не найден!")
             return
         
-        project_path = project_data.get("path")
-        if not project_path or not os.path.exists(project_path):
-            messagebox.showerror("Ошибка", f"Файл не найден:\n{project_path}")
+        if getattr(sys, 'frozen', False):
+            base = os.path.dirname(sys.executable)
+        else:
+            base = self.base_dir
+        
+        proj_path = os.path.join(base, proj_data.get("path", ""))
+        
+        if not os.path.exists(proj_path):
+            messagebox.showerror("Ошибка", f"Файл не найден:\n{proj_path}")
             return
         
         try:
-            self.status_label.config(text=f"🚀 ЗАПУСК {project_data['name']}...")
-            if project_data.get("type") == "python":
-                subprocess.Popen([sys.executable, project_path], shell=True)
+            self.status_label.configure(text=f"🚀 Запуск {proj_data['name']}...")
+            
+            # Используем py для запуска (работает везде, где установлен Python)
+            if getattr(sys, 'frozen', False):
+                # Для .exe используем py с правильными кавычками
+                # Оборачиваем путь в двойные кавычки для поддержки пробелов и кириллицы
+                cmd = f'start cmd /k "py "{proj_path}""'
+                subprocess.Popen(cmd, shell=True)
             else:
-                subprocess.Popen([project_path], shell=True)
-            self.status_label.config(text=f"✦ {project_data['name']} ЗАПУЩЕН")
+                subprocess.Popen([sys.executable, proj_path], shell=True)
+            
+            self.status_label.configure(text=f"● {proj_data['name']} запущен")
+            
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось запустить {project_data['name']}:\n{str(e)}")
-            self.status_label.config(text=f"❌ ОШИБКА ЗАПУСКА {project_data['name']}")
+            messagebox.showerror("Ошибка", f"Не удалось запустить {proj_data['name']}:\n{str(e)}")
+            self.status_label.configure(text=f"✕ Ошибка запуска {proj_data['name']}")
+    
+    # ============================================================
+    # АНИМАЦИЯ
+    # ============================================================
+    
+    def animate(self):
+        self.anim_time += 0.02
+        
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        
+        for p in self.flow_particles:
+            p["x"] += p["vx"] + math.sin(self.anim_time + p["phase"]) * 0.1
+            p["y"] += p["vy"] + math.cos(self.anim_time * 0.7 + p["phase"]) * 0.1
+            
+            if p["x"] < 0 or p["x"] > width:
+                p["vx"] *= -1
+            if p["y"] < 0 or p["y"] > height:
+                p["vy"] *= -1
+            
+            self.bg_canvas.coords(p["id"], p["x"], p["y"])
+        
+        dot_size = 4 + 3 * (0.5 + 0.5 * math.sin(self.anim_time * 3))
+        self.status_dot.coords(
+            self.dot_id,
+            7 - dot_size/2, 7 - dot_size/2,
+            7 + dot_size/2, 7 + dot_size/2
+        )
+        
+        ring_size = 6 + 3 * (0.5 + 0.5 * math.sin(self.anim_time * 2))
+        self.status_dot.coords(
+            self.dot_ring,
+            7 - ring_size, 7 - ring_size,
+            7 + ring_size, 7 + ring_size
+        )
+        
+        colors = [self.theme["accent"], "#10b981", self.theme["accent_light"]]
+        idx = int((self.anim_time * 0.4) % len(colors))
+        self.status_dot.itemconfig(self.dot_id, fill=colors[idx])
+        self.status_dot.itemconfig(self.dot_ring, outline=colors[idx])
+        
+        self.root.after(50, self.animate)
+    
+    # ============================================================
+    # СТАРТОВАЯ АНИМАЦИЯ
+    # ============================================================
+    
+    def fade_in(self):
+        self.root.attributes('-alpha', 0.0)
+        
+        def fade():
+            alpha = self.root.attributes('-alpha')
+            if alpha < 1.0:
+                alpha += 0.03
+                self.root.attributes('-alpha', alpha)
+                self.root.after(16, fade)
+        
+        fade()
+    
+    # ============================================================
+    # ПЕРЕКЛЮЧЕНИЕ ТЕМ
+    # ============================================================
+    
+    def cycle_theme(self):
+        themes = list(self.themes.keys())
+        current_idx = themes.index(self.current_theme)
+        next_idx = (current_idx + 1) % len(themes)
+        self.apply_theme(themes[next_idx])
+    
+    def apply_theme(self, theme_name):
+        self.current_theme = theme_name
+        self.theme = self.themes[theme_name]
+        
+        self.settings["theme"] = theme_name
+        with open(self.settings_path, 'w', encoding='utf-8') as f:
+            json.dump(self.settings, f, indent=2, ensure_ascii=False)
+        
+        self.refresh_ui()
+        self.status_label.configure(text=f"✨ Тема: {self.theme['name']}")
+    
+    def refresh_ui(self):
+        self.root.configure(bg=self.theme["bg"])
+        self.main_frame.configure(fg_color=self.theme["bg"])
+        self.bg_canvas.configure(bg=self.theme["bg"])
+        
+        self.bg_canvas.delete("all")
+        self.create_background()
+        
+        self.bg_canvas.delete("flow_particle")
+        self.create_flow_particles()
+        
+        self.nav_panel.configure(fg_color=self.theme["glass"])
+        self.logo.configure(text_color=self.theme["text"])
+        self.theme_label.configure(text=f"• {self.theme['name']}", text_color=self.theme["accent_light"])
+        
+        for btn in self.nav_buttons:
+            btn.configure(text_color=self.theme["text_secondary"])
+        
+        self.status_dot.configure(bg=self.theme["bg"])
+        self.status_label.configure(text_color=self.theme["text_secondary"])
+        self.count_label.configure(text_color=self.theme["text_secondary"])
+        
+        self.render_projects()
+    
+    # ============================================================
+    # НАСТРОЙКИ
+    # ============================================================
     
     def open_settings(self):
-        settings_window = tk.Toplevel(self.root)
-        settings_window.title("✦ НАСТРОЙКИ ✦")
-        settings_window.geometry("450x350")
-        settings_window.configure(bg=self.bg_medium)
-        settings_window.transient(self.root)
-        settings_window.grab_set()
+        settings = ctk.CTkToplevel(self.root)
+        settings.title("✦ Настройки ✦")
+        settings.geometry("550x550")
+        settings.configure(fg_color=self.theme["bg"])
+        settings.transient(self.root)
+        settings.grab_set()
         
-        title = tk.Label(settings_window, text="✦ НАСТРОЙКИ", font=("Segoe UI", 18, "bold"), bg=self.bg_medium, fg=self.text_primary)
-        title.pack(pady=25)
+        ctk.CTkLabel(
+            settings,
+            text="✦ Настройки",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=self.theme["text"]
+        ).pack(pady=(20, 10))
         
-        frame = tk.Frame(settings_window, bg=self.bg_medium)
-        frame.pack(fill=tk.BOTH, expand=True, padx=30)
+        container = ctk.CTkScrollableFrame(
+            settings,
+            fg_color="transparent",
+            corner_radius=0
+        )
+        container.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
         
-        auto_var = tk.BooleanVar(value=self.settings.get("auto_update", True))
-        auto_check = tk.Checkbutton(frame, text="Автоматически проверять обновления", variable=auto_var, bg=self.bg_medium, fg=self.text_secondary, selectcolor=self.bg_medium, font=("Segoe UI", 11))
-        auto_check.pack(anchor=tk.W, pady=8)
+        # --- Раздел: Тема ---
+        ctk.CTkLabel(
+            container,
+            text="🎨 Выберите тему:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=self.theme["text"]
+        ).pack(anchor=tk.W, pady=(0, 15))
         
-        separator = tk.Frame(frame, bg="#2a2a5a", height=1)
-        separator.pack(fill=tk.X, pady=10)
+        theme_grid = ctk.CTkFrame(
+            container,
+            fg_color="transparent"
+        )
+        theme_grid.pack(fill=tk.X)
         
-        def save():
-            self.settings["auto_update"] = auto_var.get()
-            with open(self.settings_path, 'w', encoding='utf-8') as f:
-                json.dump(self.settings, f, indent=2, ensure_ascii=False)
-            settings_window.destroy()
-            self.status_label.config(text="✅ НАСТРОЙКИ СОХРАНЕНЫ!")
+        row = 0
+        col = 0
+        for theme_name, theme_data in self.themes.items():
+            is_active = theme_name == self.current_theme
+            
+            theme_btn = ctk.CTkButton(
+                theme_grid,
+                text=theme_data["name"],
+                width=100,
+                height=50,
+                corner_radius=10,
+                fg_color=self.theme["accent"] if is_active else self.theme["glass"],
+                hover_color=self.theme["accent_hover"],
+                text_color="white" if is_active else self.theme["text_secondary"],
+                font=ctk.CTkFont(size=12, weight="bold" if is_active else "normal"),
+                border_width=2 if is_active else 1,
+                border_color=self.theme["accent"] if is_active else self.theme["glass_border"],
+                command=lambda t=theme_name: [self.apply_theme(t), settings.destroy()]
+            )
+            theme_btn.grid(row=row, column=col, padx=8, pady=8, sticky="ew")
+            
+            col += 1
+            if col >= 2:
+                col = 0
+                row += 1
         
-        save_btn = tk.Button(settings_window, text="💾 СОХРАНИТЬ", font=("Segoe UI", 12, "bold"), bg="#ff2d8a", fg="#ffffff", relief=tk.FLAT, padx=30, pady=10, command=save, cursor="hand2")
-        save_btn.pack(pady=25)
+        # Разделитель
+        ctk.CTkFrame(
+            container,
+            fg_color=self.theme["glass_border"],
+            height=1
+        ).pack(fill=tk.X, pady=20)
+        
+        # --- Раздел: Обновления ---
+        ctk.CTkLabel(
+            container,
+            text="🔄 Обновления:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=self.theme["text"]
+        ).pack(anchor=tk.W, pady=(0, 10))
+        
+        ctk.CTkButton(
+            container,
+            text="🔍 Проверить обновления сейчас",
+            width=200,
+            height=40,
+            corner_radius=10,
+            fg_color=self.theme["accent"],
+            hover_color=self.theme["accent_hover"],
+            text_color="white",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self.check_updates_manual
+        ).pack(anchor=tk.W, pady=(0, 5))
+        
+        version_info = ctk.CTkLabel(
+            container,
+            text=f"Текущая версия: v{CURRENT_VERSION}",
+            font=ctk.CTkFont(size=11),
+            text_color=self.theme["text_secondary"]
+        )
+        version_info.pack(anchor=tk.W, pady=(0, 20))
+        
+        # Разделитель
+        ctk.CTkFrame(
+            container,
+            fg_color=self.theme["glass_border"],
+            height=1
+        ).pack(fill=tk.X, pady=10)
+        
+        ctk.CTkButton(
+            container,
+            text="Закрыть",
+            width=150,
+            height=45,
+            corner_radius=10,
+            fg_color=self.theme["glass"],
+            hover_color=self.theme["glass_border"],
+            text_color=self.theme["text_secondary"],
+            font=ctk.CTkFont(size=12),
+            command=settings.destroy
+        ).pack(pady=20)
+    
+    # ============================================================
+    # УПРАВЛЕНИЕ ОКНОМ
+    # ============================================================
+    
+    def make_draggable(self):
+        def start_move(e):
+            self._drag_x = e.x
+            self._drag_y = e.y
+        
+        def on_move(e):
+            x = self.root.winfo_x() + e.x - self._drag_x
+            y = self.root.winfo_y() + e.y - self._drag_y
+            self.root.geometry(f"+{x}+{y}")
+        
+        self.nav_panel.bind("<Button-1>", start_move)
+        self.nav_panel.bind("<B1-Motion>", on_move)
+    
+    def close_app(self):
+        if messagebox.askyesno("Выход", "Закрыть NeoLauncher?"):
+            self.root.quit()
+            self.root.destroy()
+
+
+# ============================================================
+# ЗАПУСК
+# ============================================================
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = NeoBrainLauncher(root)
+    root = ctk.CTk()
+    app = NeoLauncher(root)
     root.mainloop()

@@ -3,40 +3,31 @@
     "neobrain": {
       "name": "NeoBrain",
       "version": "2.1.2",
-      "path": "C:/Users/Вадим/Desktop/Общее/Вадим разработка/_РАБОЧАЯ ВЕРСИЯ_/github/NeoBrain/main.py",
+      "path": "projects/neobrain.py",
       "icon": "🧠",
       "color": "#ff2d8a",
       "description": "Локальный AI-чат с персонажами",
-      "tags": [
-        "AI",
-        "Chat"
-      ],
+      "tags": ["AI", "Chat"],
       "type": "python"
     },
     "neospace": {
       "name": "NeoSpace-Pro",
       "version": "1.0.0",
-      "path": "C:/Users/Вадим/Desktop/Общее/Вадим разработка/_РАБОЧАЯ ВЕРСИЯ_/github/NeoSpace/virtual_minimal.py",
+      "path": "projects/neospace.py",
       "icon": "🖥️",
-      "color": "#a855f7",
+      "color": "#8b5cf6",
       "description": "Виртуальная среда для экспериментов",
-      "tags": [
-        "Virtual",
-        "Sandbox"
-      ],
+      "tags": ["Virtual", "Sandbox"],
       "type": "python"
     },
     "whydoes": {
       "name": "Why-Does-This-Exist",
       "version": "1.0.0",
-      "path": "C:/Users/Вадим/NeoLauncher-/projects/whydoes/abstract_madness.py",
+      "path": "projects/whydoes.py",
       "icon": "🌀",
       "color": "#fbbf24",
       "description": "Генератор визуального безумия",
-      "tags": [
-        "Visual",
-        "Art"
-      ],
+      "tags": ["Visual", "Art"],
       "type": "python"
     }
   }
