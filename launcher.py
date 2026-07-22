@@ -1,6 +1,6 @@
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 import json
 import os
 import sys
@@ -16,6 +16,7 @@ import shutil
 import tempfile
 import threading
 import time
+from pathlib import Path
 
 # ============================================================
 # НАСТРОЙКА CUSTOMTKINTER
@@ -24,12 +25,12 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 # ============================================================
-# КОНСТАНТЫ ДЛЯ ОБНОВЛЕНИЙ
+# КОНСТАНТЫ
 # ============================================================
 GITHUB_REPO = "Sbeuvadyarik67/NeoLauncher-"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}"
 VERSION_FILE = "version.json"
-CURRENT_VERSION = "3.0.0"
+CURRENT_VERSION = "3.1.0"
 
 # ============================================================
 # КЛАСС ОБНОВЛЯТОРА
@@ -223,6 +224,98 @@ class Updater:
         self.parent.root.destroy()
 
 # ============================================================
+# КЛАСС ДЛЯ УПРАВЛЕНИЯ ПРОЕКТАМИ
+# ============================================================
+
+class ProjectManager:
+    def __init__(self, parent):
+        self.parent = parent
+        self.base_dir = parent.base_dir
+        self.manifest_path = parent.manifest_path
+        self.projects_dir = os.path.join(self.base_dir, "projects")
+        
+        # Создаём папку projects если её нет
+        os.makedirs(self.projects_dir, exist_ok=True)
+    
+    def add_project(self, file_path):
+        try:
+            if not os.path.exists(file_path):
+                return False, "Файл не найден"
+            
+            ext = os.path.splitext(file_path)[1].lower()
+            file_name = os.path.basename(file_path)
+            name = os.path.splitext(file_name)[0]
+            
+            supported_types = {
+                '.py': 'python',
+                '.exe': 'exe',
+                '.bat': 'bat',
+                '.cmd': 'cmd',
+                '.url': 'url',
+                '.lnk': 'lnk'
+            }
+            
+            if ext not in supported_types:
+                return False, f"Неподдерживаемый тип файла: {ext}"
+            
+            dest_path = os.path.join(self.projects_dir, file_name)
+            
+            counter = 1
+            base_name = name
+            while os.path.exists(dest_path):
+                new_name = f"{base_name}_{counter}{ext}"
+                dest_path = os.path.join(self.projects_dir, new_name)
+                counter += 1
+            
+            shutil.copy2(file_path, dest_path)
+            
+            icon_map = {
+                '.py': '🐍',
+                '.exe': '⚙️',
+                '.bat': '📜',
+                '.cmd': '📜',
+                '.url': '🔗',
+                '.lnk': '🔗'
+            }
+            
+            color_map = {
+                '.py': '#6c5ce7',
+                '.exe': '#00b894',
+                '.bat': '#fdcb6e',
+                '.cmd': '#fdcb6e',
+                '.url': '#0984e3',
+                '.lnk': '#0984e3'
+            }
+            
+            manifest = self.parent.load_manifest()
+            
+            project_id = name.lower().replace(' ', '_')
+            counter = 1
+            original_id = project_id
+            while project_id in manifest["projects"]:
+                project_id = f"{original_id}_{counter}"
+                counter += 1
+            
+            manifest["projects"][project_id] = {
+                "name": name,
+                "version": "1.0.0",
+                "path": f"projects/{os.path.basename(dest_path)}",
+                "icon": icon_map.get(ext, '📦'),
+                "color": color_map.get(ext, '#6c5ce7'),
+                "description": f"Добавлен вручную: {file_name}",
+                "tags": [supported_types[ext].capitalize()],
+                "type": supported_types[ext]
+            }
+            
+            with open(self.manifest_path, 'w', encoding='utf-8') as f:
+                json.dump(manifest, f, indent=2, ensure_ascii=False)
+            
+            return True, f"Проект '{name}' добавлен!"
+            
+        except Exception as e:
+            return False, f"Ошибка: {str(e)}"
+
+# ============================================================
 # ГЛАВНЫЙ КЛАСС ЛАУНЧЕРА
 # ============================================================
 
@@ -325,15 +418,7 @@ class NeoLauncher:
         self.theme = self.themes[self.current_theme]
         
         # ============================================================
-        # ПАРАМЕТРЫ
-        # ============================================================
-        self.anim_time = 0
-        self.flow_particles = []
-        self.hover_index = -1
-        self.updater = Updater(self)
-        
-        # ============================================================
-        # ЗАГРУЗКА ДАННЫХ
+        # ЗАГРУЗКА ДАННЫХ (СНАЧАЛА!)
         # ============================================================
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.manifest_path = os.path.join(self.base_dir, "manifest.json")
@@ -341,6 +426,19 @@ class NeoLauncher:
         
         self.manifest = self.load_manifest()
         self.settings = self.load_settings()
+        
+        # ============================================================
+        # ПАРАМЕТРЫ (ПОТОМ!)
+        # ============================================================
+        self.anim_time = 0
+        self.flow_particles = []
+        self.hover_index = -1
+        self.all_projects = {}
+        self.search_query = ""
+        
+        # Updater и ProjectManager создаются ПОСЛЕ загрузки данных
+        self.updater = Updater(self)
+        self.project_manager = ProjectManager(self)
         
         # ============================================================
         # ПОСТРОЕНИЕ UI
@@ -354,7 +452,6 @@ class NeoLauncher:
         self.make_draggable()
         self.fade_in()
         
-        # Проверяем обновления в фоновом режиме
         self.check_for_updates_background()
     
     # ============================================================
@@ -399,7 +496,8 @@ class NeoLauncher:
                     "icon": "🧠",
                     "color": "#7c3aed",
                     "description": "Локальный AI-чат с персонажами",
-                    "tags": ["AI", "Chat"]
+                    "tags": ["AI", "Chat"],
+                    "type": "python"
                 },
                 "neospace": {
                     "name": "NeoSpace-Pro",
@@ -408,7 +506,8 @@ class NeoLauncher:
                     "icon": "🖥️",
                     "color": "#06b6d4",
                     "description": "Виртуальная среда для экспериментов",
-                    "tags": ["Virtual", "Sandbox"]
+                    "tags": ["Virtual", "Sandbox"],
+                    "type": "python"
                 },
                 "whydoes": {
                     "name": "Why-Does-This-Exist",
@@ -417,7 +516,8 @@ class NeoLauncher:
                     "icon": "🌀",
                     "color": "#f97316",
                     "description": "Генератор визуального безумия",
-                    "tags": ["Visual", "Art"]
+                    "tags": ["Visual", "Art"],
+                    "type": "python"
                 }
             }
         }
@@ -487,7 +587,7 @@ class NeoLauncher:
             self.nav_panel,
             fg_color="transparent"
         )
-        logo_frame.place(relx=0.04, rely=0.5, anchor=tk.W)
+        logo_frame.place(relx=0.03, rely=0.5, anchor=tk.W)
         
         self.logo = ctk.CTkLabel(
             logo_frame,
@@ -523,11 +623,51 @@ class NeoLauncher:
         )
         self.theme_label.pack(side=tk.LEFT, padx=(12, 0))
         
+        # ============================================================
+        # ПОИСК
+        # ============================================================
+        search_frame = ctk.CTkFrame(
+            self.nav_panel,
+            fg_color="transparent"
+        )
+        search_frame.place(relx=0.40, rely=0.5, anchor=tk.W, relwidth=0.35)
+        
+        self.search_entry = ctk.CTkEntry(
+            search_frame,
+            placeholder_text="🔍 Поиск проектов...",
+            font=ctk.CTkFont(size=13),
+            height=35,
+            corner_radius=10,
+            fg_color=self.theme["surface"],
+            text_color=self.theme["text"],
+            placeholder_text_color=self.theme["text_secondary"]
+        )
+        self.search_entry.pack(fill=tk.X, expand=True)
+        self.search_entry.bind("<KeyRelease>", self.on_search)
+        
+        # ============================================================
+        # КНОПКИ
+        # ============================================================
         btn_frame = ctk.CTkFrame(
             self.nav_panel,
             fg_color="transparent"
         )
         btn_frame.place(relx=0.96, rely=0.5, anchor=tk.E)
+        
+        # Кнопка "Добавить проект"
+        self.add_btn = ctk.CTkButton(
+            btn_frame,
+            text="➕",
+            width=42,
+            height=42,
+            corner_radius=10,
+            fg_color="transparent",
+            hover_color=self.theme["glass"],
+            text_color=self.theme["text_secondary"],
+            font=ctk.CTkFont(size=20),
+            command=self.add_project_dialog
+        )
+        self.add_btn.pack(side=tk.LEFT, padx=4)
         
         self.nav_buttons = []
         buttons = [
@@ -556,8 +696,6 @@ class NeoLauncher:
             def on_enter(e, b=btn, t=text):
                 if t == "✕":
                     b.configure(text_color="#ef4444")
-                elif t == "🔄":
-                    b.configure(text_color=self.theme["accent"])
                 else:
                     b.configure(text_color=self.theme["accent"])
             
@@ -616,6 +754,43 @@ class NeoLauncher:
             height=int(self.root.winfo_height() * 0.80)
         )
         self.cards_frame.place(relx=0.02, rely=0.17)
+    
+    # ============================================================
+    # ПОИСК
+    # ============================================================
+    
+    def on_search(self, event):
+        self.search_query = self.search_entry.get().strip().lower()
+        self.render_projects()
+    
+    # ============================================================
+    # ДОБАВЛЕНИЕ ПРОЕКТА
+    # ============================================================
+    
+    def add_project_dialog(self):
+        file_path = filedialog.askopenfilename(
+            title="Выберите файл для добавления",
+            filetypes=[
+                ("Python файлы", "*.py"),
+                ("Исполняемые файлы", "*.exe"),
+                ("Пакетные файлы", "*.bat;*.cmd"),
+                ("Ярлыки", "*.lnk;*.url"),
+                ("Все файлы", "*.*")
+            ]
+        )
+        
+        if not file_path:
+            return
+        
+        success, message = self.project_manager.add_project(file_path)
+        
+        if success:
+            messagebox.showinfo("✅ Успех", message)
+            self.manifest = self.load_manifest()
+            self.render_projects()
+            self.status_label.configure(text=f"✅ {message}")
+        else:
+            messagebox.showerror("❌ Ошибка", message)
     
     def check_updates_manual(self):
         update_info = self.updater.check_for_updates(show_progress=True)
@@ -733,20 +908,35 @@ class NeoLauncher:
         
         projects = self.manifest.get("projects", {})
         
-        if not projects:
+        filtered_projects = {}
+        if self.search_query:
+            for proj_id, proj_data in projects.items():
+                name = proj_data.get("name", "").lower()
+                desc = proj_data.get("description", "").lower()
+                tags = [tag.lower() for tag in proj_data.get("tags", [])]
+                
+                if (self.search_query in name or 
+                    self.search_query in desc or 
+                    any(self.search_query in tag for tag in tags)):
+                    filtered_projects[proj_id] = proj_data
+        else:
+            filtered_projects = projects
+        
+        if not filtered_projects:
+            empty_text = "📭 Нет проектов" if not self.search_query else f"🔍 Ничего не найдено по запросу '{self.search_query}'"
             empty = ctk.CTkLabel(
                 self.cards_frame,
-                text="📭 Нет проектов",
+                text=empty_text,
                 font=ctk.CTkFont(size=24),
                 text_color=self.theme["text_secondary"]
             )
             empty.pack(expand=True)
             return
         
-        self.count_label.configure(text=f"✦ {len(projects)} проектов")
+        self.count_label.configure(text=f"✦ {len(filtered_projects)} проектов")
         
         cards_per_row = 3
-        for idx, (proj_id, proj_data) in enumerate(projects.items()):
+        for idx, (proj_id, proj_data) in enumerate(filtered_projects.items()):
             row = idx // cards_per_row
             col = idx % cards_per_row
             
@@ -762,6 +952,7 @@ class NeoLauncher:
     
     def create_glass_card(self, parent, proj_id, proj_data):
         color = proj_data.get("color", self.theme["accent"])
+        proj_type = proj_data.get("type", "python")
         
         card = ctk.CTkFrame(
             parent,
@@ -822,6 +1013,27 @@ class NeoLauncher:
             text_color=self.theme["text"]
         )
         name.pack()
+        
+        # Бейдж типа проекта
+        type_colors = {
+            "python": "#6c5ce7",
+            "exe": "#00b894",
+            "bat": "#fdcb6e",
+            "cmd": "#fdcb6e",
+            "url": "#0984e3",
+            "lnk": "#0984e3"
+        }
+        type_badge = ctk.CTkLabel(
+            inner,
+            text=proj_type.upper(),
+            font=ctk.CTkFont(size=8, weight="bold"),
+            text_color=type_colors.get(proj_type, self.theme["accent_light"]),
+            fg_color=self.theme["glass"],
+            corner_radius=4,
+            padx=6,
+            pady=2
+        )
+        type_badge.pack(pady=(2, 0))
         
         tags = proj_data.get("tags", [])
         if tags:
@@ -906,7 +1118,7 @@ class NeoLauncher:
         return f"#{r:02x}{g:02x}{b:02x}"
     
     # ============================================================
-    # ЗАПУСК ПРОЕКТОВ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+    # ЗАПУСК ПРОЕКТОВ
     # ============================================================
     
     def launch_project(self, project_id):
@@ -929,12 +1141,20 @@ class NeoLauncher:
         try:
             self.status_label.configure(text=f"🚀 Запуск {proj_data['name']}...")
             
-            # Используем py для запуска (работает везде, где установлен Python)
+            proj_type = proj_data.get("type", "python")
+            
             if getattr(sys, 'frozen', False):
-                # Для .exe используем py с правильными кавычками
-                # Оборачиваем путь в двойные кавычки для поддержки пробелов и кириллицы
-                cmd = f'start cmd /k "py "{proj_path}""'
-                subprocess.Popen(cmd, shell=True)
+                if proj_type == "exe":
+                    subprocess.Popen([proj_path], shell=True)
+                elif proj_type in ["bat", "cmd"]:
+                    subprocess.Popen([proj_path], shell=True)
+                elif proj_type == "url":
+                    subprocess.Popen(['start', proj_path], shell=True)
+                elif proj_type == "lnk":
+                    subprocess.Popen([proj_path], shell=True)
+                else:
+                    cmd = f'start cmd /k "py "{proj_path}""'
+                    subprocess.Popen(cmd, shell=True)
             else:
                 subprocess.Popen([sys.executable, proj_path], shell=True)
             
@@ -1037,6 +1257,12 @@ class NeoLauncher:
         self.nav_panel.configure(fg_color=self.theme["glass"])
         self.logo.configure(text_color=self.theme["text"])
         self.theme_label.configure(text=f"• {self.theme['name']}", text_color=self.theme["accent_light"])
+        
+        self.search_entry.configure(
+            fg_color=self.theme["surface"],
+            text_color=self.theme["text"],
+            placeholder_text_color=self.theme["text_secondary"]
+        )
         
         for btn in self.nav_buttons:
             btn.configure(text_color=self.theme["text_secondary"])
