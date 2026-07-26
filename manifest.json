@@ -1,0 +1,49 @@
+{
+  "projects": {
+    "neobrain": {
+      "name": "NeoBrain",
+      "version": "3.5.0",
+      "path": "projects/NeoBrain_v3.5.exe",
+      "icon": "🧠",
+      "color": "#00d4ff",
+      "description": "Локальный AI-чат с 24 темами и персонажами",
+      "tags": [
+        "AI",
+        "Chat"
+      ],
+      "type": "exe",
+      "launches": 0,
+      "favorite": false
+    },
+    "neospace": {
+      "name": "NeoSpace-Pro",
+      "version": "1.0.0",
+      "path": "projects/neospace.py",
+      "icon": "🖥️",
+      "color": "#8b5cf6",
+      "description": "Виртуальная среда для экспериментов",
+      "tags": [
+        "Virtual",
+        "Sandbox"
+      ],
+      "type": "python",
+      "launches": 2,
+      "favorite": false
+    },
+    "whydoes": {
+      "name": "Why-Does-This-Exist",
+      "version": "1.0.0",
+      "path": "projects/whydoes.py",
+      "icon": "🌀",
+      "color": "#fbbf24",
+      "description": "Генератор визуального безумия",
+      "tags": [
+        "Visual",
+        "Art"
+      ],
+      "type": "python",
+      "launches": 2,
+      "favorite": false
+    }
+  }
+}
