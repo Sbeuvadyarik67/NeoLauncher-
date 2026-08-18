@@ -3,7 +3,7 @@
     "neobrain": {
       "name": "NeoBrain",
       "version": "3.5.0",
-      "path": "projects/NeoBrain_v3.5.exe",
+      "path": "projects/neobrain.py",
       "icon": "🧠",
       "color": "#00d4ff",
       "description": "Локальный AI-чат с 24 темами и персонажами",
@@ -11,7 +11,7 @@
         "AI",
         "Chat"
       ],
-      "type": "exe",
+      "type": "python",
       "launches": 0,
       "favorite": false
     },

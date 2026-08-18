@@ -1,0 +1,19 @@
+{
+  "id": "20260724_171001",
+  "name": "Алина",
+  "system_prompt": "",
+  "style": "",
+  "gender": "female",
+  "history": [
+    {
+      "role": "user",
+      "content": "привет!"
+    },
+    {
+      "role": "assistant",
+      "content": "Привет! Чем могу помочь сегодня?"
+    }
+  ],
+  "created": "2026-07-24T17:10:01.157300",
+  "last_used": "2026-07-24T17:10:12.222399"
+}

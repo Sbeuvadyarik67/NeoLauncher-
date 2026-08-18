@@ -1,0 +1,38 @@
+15:43:44 | INFO | NeoBrain | 🚀 NeoBrain запущен
+15:43:44 | INFO | NeoBrain | 📁 Логи сохраняются в: logs/neobrain_20260724.log
+15:43:46 | INFO | NeoBrain | ✅ Папки созданы: characters/, avatars/, avatars\user/
+15:43:46 | INFO | NeoBrain | 🔄 Запуск NeoBrain...
+15:43:46 | INFO | NeoBrain | 📦 Режим: EXE
+15:43:48 | INFO | NeoBrain | ✅ Ollama уже запущена
+15:43:51 | INFO | NeoBrain | 🌐 Запуск WebView на http://127.0.0.1:8000
+15:43:52 | DEBUG | NeoBrain | 📋 Загружено персонажей: 0
+15:47:56 | INFO | NeoBrain | 🚀 NeoBrain запущен
+15:47:56 | INFO | NeoBrain | 📁 Логи сохраняются в: logs/neobrain_20260724.log
+15:47:58 | INFO | NeoBrain | ✅ Папки созданы: characters/, avatars/, avatars\user/
+15:47:58 | INFO | NeoBrain | 🔄 Запуск NeoBrain...
+15:47:58 | INFO | NeoBrain | 📦 Режим: EXE
+15:48:00 | INFO | NeoBrain | ✅ Ollama уже запущена
+15:48:03 | INFO | NeoBrain | 🌐 Запуск WebView на http://127.0.0.1:8000
+15:48:07 | DEBUG | NeoBrain | 📋 Загружено персонажей: 0
+17:09:09 | INFO | NeoBrain | 🚀 NeoBrain запущен
+17:09:09 | INFO | NeoBrain | 📁 Логи сохраняются в: logs/neobrain_20260724.log
+17:09:42 | INFO | NeoBrain | ✅ Папки созданы: characters/, avatars/, avatars\user/
+17:09:42 | INFO | NeoBrain | 🔄 Запуск NeoBrain...
+17:09:42 | INFO | NeoBrain | 📦 Режим: EXE
+17:09:44 | INFO | NeoBrain | ✅ Ollama уже запущена
+17:09:47 | INFO | NeoBrain | 🌐 Запуск WebView на http://127.0.0.1:8000
+17:09:50 | DEBUG | NeoBrain | 📋 Загружено персонажей: 0
+17:10:01 | DEBUG | NeoBrain | 💾 Персонаж Алина сохранён
+17:10:01 | INFO | NeoBrain | ✅ Создан персонаж: Алина (id: 20260724_171001)
+17:10:01 | DEBUG | NeoBrain | 📋 Загружено персонажей: 1
+17:10:06 | INFO | NeoBrain | 📩 Запрос: привет! | provider=ollama | char=20260724_171001
+17:10:06 | DEBUG | NeoBrain | 👤 Персонаж: Алина (пол: female)
+17:10:06 | INFO | NeoBrain | 🔄 Обработка 1 новых слов...
+17:10:06 | DEBUG | NeoBrain |   ➕ Добавлено: привет
+17:10:06 | DEBUG | NeoBrain | 💾 Персонаж Алина сохранён
+17:10:06 | DEBUG | NeoBrain | 💬 Добавлено сообщение для Алина (user): привет!...
+17:10:06 | INFO | NeoBrain | ✅ Словарь обновлён
+17:10:12 | DEBUG | NeoBrain | 📤 Ответ от Ollama получен
+17:10:12 | DEBUG | NeoBrain | 💾 Персонаж Алина сохранён
+17:10:12 | DEBUG | NeoBrain | 💬 Добавлено сообщение для Алина (assistant): Привет! Чем могу помочь сегодня?...
+17:10:12 | DEBUG | NeoBrain | 💬 Ответ сохранён для Алина
