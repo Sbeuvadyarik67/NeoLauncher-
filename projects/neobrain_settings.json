@@ -1,3 +1,80 @@
 {
-  "language": "ru"
+  "language": "ru",
+  "ollama_url": "http://localhost:11434",
+  "model": "qwen2.5-coder:7b-131k",
+  "temperature": 0.7,
+  "max_tokens": 512,
+  "system_prompt": "Ты полезный AI-ассистент. Отвечай на русском языке.",
+  "theme": "🌆 Неон",
+  "current_character": {
+    "name": "Алиса",
+    "gender": "мужской",
+    "personality": "",
+    "description": "",
+    "prompt": "Ты персонаж по имени Алиса. Ты он. Отвечай в этом образе.",
+    "pronoun": "он"
+  },
+  "characters": {
+    "Лана": {
+      "name": "Лана",
+      "gender": "женский"
+    },
+    "Елена": {
+      "name": "Елена",
+      "gender": "женский"
+    },
+    "Алиса": {
+      "name": "Алиса",
+      "gender": "мужской",
+      "personality": "",
+      "description": "",
+      "prompt": "Ты персонаж по имени Алиса. Ты он. Отвечай в этом образе.",
+      "pronoun": "он"
+    }
+  },
+  "history": [
+    {
+      "sender": "✦ NeoBrain",
+      "text": "Чат очищен."
+    },
+    {
+      "sender": "✦ NeoBrain",
+      "text": "Модель изменена на: qwen2.5-coder:7b-fast"
+    },
+    {
+      "sender": "✦ NeoBrain",
+      "text": "Тема изменена на: ☀️ Светлая"
+    },
+    {
+      "sender": "✦ NeoBrain",
+      "text": "Тема изменена на: 🌃 Ночная"
+    },
+    {
+      "sender": "✦ NeoBrain",
+      "text": "Тема изменена на: 🌆 Неон"
+    },
+    {
+      "sender": "Вы",
+      "text": "Ку"
+    },
+    {
+      "sender": "✦ NeoBrain",
+      "text": "Модель изменена на: "
+    },
+    {
+      "sender": "✦ NeoBrain",
+      "text": "Модель изменена на: qwen2.5-coder:7b-131k"
+    },
+    {
+      "sender": "✦ NeoBrain",
+      "text": "✅ Создан персонаж: Алиса (мужской)"
+    },
+    {
+      "sender": "Вы",
+      "text": "привет"
+    }
+  ],
+  "auto_save": true,
+  "interface_style": "standard",
+  "stream_mode": true
 }

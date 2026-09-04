@@ -9,6 +9,9 @@ import time
 import subprocess
 import threading
 import requests
+import psutil
+import random
+from collections import deque
 
 # ИМПОРТ ИГР
 from games import Minesweeper, Snake, Catcher
@@ -358,6 +361,165 @@ def get_theme_display_name(theme_name):
     return names.get(theme_name, theme_name)
 
 # ===================================================
+# ВИРТУАЛЬНЫЕ ПРОЦЕССЫ
+# ===================================================
+class VirtualProcess:
+    """Виртуальный процесс в NeoSpace OS"""
+    
+    _next_pid = 1000
+    
+    def __init__(self, name, cpu_usage=0, memory_usage=0, icon="🔄"):
+        self.pid = VirtualProcess._next_pid
+        VirtualProcess._next_pid += 1
+        self.name = name
+        self.icon = icon
+        self.cpu_usage = cpu_usage  # 0-100
+        self.memory_usage = memory_usage  # MB
+        self.status = "running"
+        self.start_time = datetime.now()
+        self.is_virtual = True
+        self.thread = None
+        self.running = False
+        
+    def get_uptime(self):
+        delta = datetime.now() - self.start_time
+        minutes = int(delta.total_seconds() // 60)
+        seconds = int(delta.total_seconds() % 60)
+        return f"{minutes}м {seconds}с"
+    
+    def get_status_display(self):
+        statuses = {
+            "running": "▶ Активен",
+            "sleeping": "💤 Спящий",
+            "stopped": "⏸ Остановлен",
+        }
+        return statuses.get(self.status, self.status)
+    
+    def simulate_work(self):
+        """Симулирует работу процесса (изменяет CPU)"""
+        self.running = True
+        while self.running and self.status == "running":
+            # Изменяем нагрузку случайно
+            if random.random() < 0.3:
+                self.cpu_usage = random.randint(5, 80)
+            time.sleep(0.5)
+    
+    def stop(self):
+        self.running = False
+        self.status = "stopped"
+        self.cpu_usage = 0
+    
+    def start(self):
+        if self.status == "stopped":
+            self.status = "running"
+            self.running = True
+            if self.thread and not self.thread.is_alive():
+                self.thread = threading.Thread(target=self.simulate_work, daemon=True)
+                self.thread.start()
+    
+    def to_dict(self):
+        return {
+            "pid": self.pid,
+            "name": self.name,
+            "icon": self.icon,
+            "cpu": self.cpu_usage,
+            "memory": self.memory_usage,
+            "status": self.status,
+            "uptime": self.get_uptime()
+        }
+
+
+class VirtualProcessManager:
+    """Менеджер виртуальных процессов"""
+    
+    def __init__(self):
+        self.processes = {}
+        self.virtual_cpu_total = 0
+        self.virtual_memory_total = 4096  # 4 GB виртуальной памяти
+        self.virtual_memory_used = 0
+        
+        # Стартовые виртуальные процессы
+        self._init_default_processes()
+    
+    def _init_default_processes(self):
+        """Создаёт стандартные виртуальные процессы"""
+        default_processes = [
+            ("NeoSpace Kernel", 15, 128, "🧠"),
+            ("Window Manager", 8, 64, "🪟"),
+            ("File System", 5, 32, "📁"),
+            ("Network Service", 3, 48, "🌐"),
+            ("Audio Service", 2, 24, "🔊"),
+            ("Clipboard Manager", 1, 16, "📋"),
+            ("Theme Service", 4, 32, "🎨"),
+            ("Task Scheduler", 3, 20, "⏰"),
+        ]
+        
+        for name, cpu, memory, icon in default_processes:
+            proc = VirtualProcess(name, cpu, memory, icon)
+            # Запускаем поток симуляции
+            proc.thread = threading.Thread(target=proc.simulate_work, daemon=True)
+            proc.thread.start()
+            self.processes[proc.pid] = proc
+            self.virtual_memory_used += memory
+    
+    def create_process(self, name, cpu=10, memory=32, icon="🔄"):
+        """Создаёт новый виртуальный процесс"""
+        proc = VirtualProcess(name, cpu, memory, icon)
+        proc.thread = threading.Thread(target=proc.simulate_work, daemon=True)
+        proc.thread.start()
+        self.processes[proc.pid] = proc
+        self.virtual_memory_used += memory
+        return proc
+    
+    def kill_process(self, pid):
+        """Завершает виртуальный процесс"""
+        if pid in self.processes:
+            proc = self.processes[pid]
+            proc.stop()
+            # Не удаляем, а помечаем как остановленный
+            return True
+        return False
+    
+    def start_process(self, pid):
+        """Запускает остановленный процесс"""
+        if pid in self.processes:
+            proc = self.processes[pid]
+            if proc.status == "stopped":
+                proc.start()
+                return True
+        return False
+    
+    def remove_process(self, pid):
+        """Полностью удаляет процесс"""
+        if pid in self.processes:
+            proc = self.processes[pid]
+            proc.stop()
+            self.virtual_memory_used -= proc.memory_usage
+            del self.processes[pid]
+            return True
+        return False
+    
+    def get_processes(self):
+        """Возвращает список всех процессов"""
+        return [p.to_dict() for p in self.processes.values()]
+    
+    def get_stats(self):
+        """Возвращает статистику системы"""
+        total_cpu = sum(p.cpu_usage for p in self.processes.values() if p.status == "running")
+        total_memory = self.virtual_memory_used
+        return {
+            "cpu": min(total_cpu, 100),
+            "memory": total_memory,
+            "memory_total": self.virtual_memory_total,
+            "processes": len(self.processes),
+            "running": sum(1 for p in self.processes.values() if p.status == "running")
+        }
+
+
+# Глобальный менеджер процессов
+PROCESS_MANAGER = VirtualProcessManager()
+
+# ===================================================
 # ДИАЛОГ С ПРОГРЕСС-БАРОМ ДЛЯ СМЕНЫ ТЕМЫ
 # ===================================================
 class ThemeProgressDialog:
@@ -414,7 +576,7 @@ class ThemeProgressDialog:
                 self.callback()
 
 # ===================================================
-# ФУНКЦИИ РАБОТЫ С БРАУЗЕРОМ (ИСПРАВЛЕННЫЕ)
+# ФУНКЦИИ РАБОТЫ С БРАУЗЕРОМ
 # ===================================================
 def get_browser_path():
     path = SETTINGS.get("browser_path", "")
@@ -454,13 +616,11 @@ def copy_browser_to_virtual(src_path):
         filename = os.path.basename(src_path)
         dst_path = os.path.join(browser_dir, filename)
         
-        # Если файл уже есть — проверяем, нужна ли замена
         if os.path.exists(dst_path):
             if not messagebox.askyesno("Браузер уже есть", 
                                        f"Браузер '{filename}' уже скопирован.\nЗаменить?"):
                 return dst_path
         
-        # Копируем с прогрессом
         shutil.copy2(src_path, dst_path)
         return dst_path
     except Exception as e:
@@ -812,7 +972,6 @@ class ResizeGrip:
         new_w = self._resize_width
         new_h = self._resize_height
         
-        # Минимальные размеры
         min_w = 800
         min_h = 600
         
@@ -827,7 +986,6 @@ class ResizeGrip:
             new_h = max(min_h, self._resize_height - dy)
             new_y = self._resize_y_win + dy
         
-        # Для углов
         if direction in ['ne', 'nw', 'se', 'sw']:
             if 'e' in direction:
                 new_w = max(min_w, self._resize_width + dx)
@@ -838,8 +996,7 @@ class ResizeGrip:
                 new_x = self._resize_x_win + dx
             if 'n' in direction:
                 new_h = max(min_h, self._resize_height - dy)
-                new_y = self._resize_y_win + dy
-        
+                new_y = self._resize_y_win + dy        
         self.root.geometry(f"{new_w}x{new_h}+{new_x}+{new_y}")
         self._on_resize_wallpaper(None)
     
@@ -848,9 +1005,486 @@ class ResizeGrip:
             del self._resize_direction
     
     def _on_resize_wallpaper(self, e):
-        """Обновляет обои при ресайзе"""
         if hasattr(self.parent, '_on_resize_wallpaper'):
             self.parent._on_resize_wallpaper(e)
+
+# ===================================================
+# ВИРТУАЛЬНЫЙ ДИСПЕТЧЕР ЗАДАЧ
+# ===================================================
+class VirtualTaskManager:
+    """Виртуальный диспетчер задач - управляет только процессами NeoSpace OS"""
+    
+    def __init__(self, parent):
+        self.parent = parent
+        self.sort_column = None
+        self.sort_reverse = False
+        self.processes_data = []
+        
+        self.window = tk.Toplevel(parent.root)
+        self.window.title("📊 Виртуальный диспетчер задач")
+        self.window.geometry("900x650")
+        self.window.configure(bg=COLORS["window_bg"])
+        self.window.minsize(750, 500)
+        
+        # Заголовок
+        title_frame = tk.Frame(self.window, bg=COLORS["window_bg"])
+        title_frame.pack(fill=tk.X, pady=10)
+        
+        tk.Label(
+            title_frame,
+            text="📊 Виртуальный диспетчер задач",
+            font=("Segoe UI", 16, "bold"),
+            bg=COLORS["window_bg"],
+            fg=COLORS["fg"]
+        ).pack()
+        
+        tk.Label(
+            title_frame,
+            text="Управление виртуальными процессами NeoSpace OS",
+            font=("Segoe UI", 10),
+            bg=COLORS["window_bg"],
+            fg=COLORS["fg_secondary"]
+        ).pack()
+        
+        # Основной фрейм
+        main_frame = tk.Frame(self.window, bg=COLORS["window_bg"])
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
+        
+        # Верхняя панель с информацией
+        top_frame = tk.Frame(main_frame, bg=COLORS["window_bg"])
+        top_frame.pack(fill=tk.X, pady=(0, 8))
+        
+        # Системная статистика
+        self.stats_frame = tk.Frame(top_frame, bg=COLORS["bg_light"], relief=tk.FLAT, bd=0)
+        self.stats_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        self.stats_label = tk.Label(
+            self.stats_frame,
+            text="🖥️ Виртуальная система: загрузка...",
+            font=("Segoe UI", 10),
+            bg=COLORS["bg_light"],
+            fg=COLORS["fg"],
+            padx=10,
+            pady=5
+        )
+        self.stats_label.pack(side=tk.LEFT)
+        
+        # Поиск
+        search_frame = tk.Frame(top_frame, bg=COLORS["window_bg"])
+        search_frame.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        tk.Label(search_frame, text="🔍 Поиск:", 
+                bg=COLORS["window_bg"], fg=COLORS["fg"],
+                font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.search_var = tk.StringVar()
+        self.search_var.trace('w', lambda *args: self.refresh_processes())
+        
+        search_entry = tk.Entry(search_frame, textvariable=self.search_var,
+                               bg=COLORS["entry_bg"], fg=COLORS["entry_fg"],
+                               font=("Segoe UI", 10), relief=tk.FLAT,
+                               insertbackground=COLORS["fg"], width=20)
+        search_entry.pack(side=tk.LEFT)
+        
+        # ---- ТАБЛИЦА ----
+        style = ttk.Style()
+        style.theme_use('default')
+        
+        style.configure("VirtualTask.Treeview",
+                       background="#f5f5f5",
+                       foreground="#1a1a1a",
+                       fieldbackground="#f5f5f5",
+                       font=("Segoe UI", 10),
+                       rowheight=28)
+        
+        style.configure("VirtualTask.Treeview.Heading",
+                       background="#2d2d3d",
+                       foreground="#ffffff",
+                       font=("Segoe UI", 10, "bold"),
+                       relief=tk.FLAT)
+        
+        style.map("VirtualTask.Treeview.Heading",
+                 background=[('active', '#3d3d5d')])
+        
+        style.map("VirtualTask.Treeview",
+                 background=[('selected', '#4a6fa5')])
+        
+        columns = ("PID", "Имя", "Статус", "CPU %", "Память (MB)", "Время работы")
+        self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", 
+                                style="VirtualTask.Treeview", height=18)
+        
+        column_widths = {
+            "PID": 70,
+            "Имя": 200,
+            "Статус": 120,
+            "CPU %": 85,
+            "Память (MB)": 110,
+            "Время работы": 130
+        }
+        
+        for col in columns:
+            self.tree.heading(col, text=col, command=lambda c=col: self.sort_by_column(c))
+            self.tree.column(col, width=column_widths[col], anchor="center" if col != "Имя" else "w",
+                           minwidth=column_widths[col] - 30)
+        
+        # Скролл
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Цветовые теги
+        self.tree.tag_configure('cpu_low', background='#e8f5e9', foreground='#1a1a1a')
+        self.tree.tag_configure('cpu_medium', background='#fff3e0', foreground='#1a1a1a')
+        self.tree.tag_configure('cpu_high', background='#ffebee', foreground='#c62828')
+        self.tree.tag_configure('cpu_extreme', background='#ff1744', foreground='#ffffff')
+        self.tree.tag_configure('stopped', background='#e0e0e0', foreground='#888888')
+        
+        # Кнопки
+        btn_frame = tk.Frame(main_frame, bg=COLORS["window_bg"])
+        btn_frame.pack(fill=tk.X, pady=10)
+        
+        button_style = {
+            "relief": tk.FLAT,
+            "padx": 18,
+            "pady": 6,
+            "font": ("Segoe UI", 10, "bold"),
+            "cursor": "hand2"
+        }
+        
+        tk.Button(
+            btn_frame,
+            text="🔄 Обновить",
+            command=self.refresh_processes,
+            bg=COLORS["accent"],
+            fg=COLORS["bg"],
+            **button_style
+        ).pack(side=tk.LEFT, padx=4)
+        
+        tk.Button(
+            btn_frame,
+            text="⏹ Остановить процесс",
+            command=self.stop_process,
+            bg="#ff6b35",
+            fg="white",
+            **button_style
+        ).pack(side=tk.LEFT, padx=4)
+        
+        tk.Button(
+            btn_frame,
+            text="▶ Запустить процесс",
+            command=self.start_process,
+            bg="#2ecc71",
+            fg="white",
+            **button_style
+        ).pack(side=tk.LEFT, padx=4)
+        
+        tk.Button(
+            btn_frame,
+            text="🗑 Удалить процесс",
+            command=self.remove_process,
+            bg="#e74c3c",
+            fg="white",
+            **button_style
+        ).pack(side=tk.LEFT, padx=4)
+        
+        self.auto_btn = tk.Button(
+            btn_frame,
+            text="▶ Автообновление",
+            command=self.toggle_auto_refresh,
+            bg=COLORS["bg_light"],
+            fg=COLORS["fg"],
+            **button_style
+        )
+        self.auto_btn.pack(side=tk.LEFT, padx=4)
+        
+        tk.Button(
+            btn_frame,
+            text="➕ Новый процесс",
+            command=self.create_new_process,
+            bg=COLORS["bg_light"],
+            fg=COLORS["fg"],
+            **button_style
+        ).pack(side=tk.LEFT, padx=4)
+        
+        # Статусная строка
+        self.status_label = tk.Label(
+            self.window,
+            text="✅ Виртуальная система работает",
+            font=("Segoe UI", 10),
+            bg=COLORS["window_bg"],
+            fg=COLORS["fg_secondary"]
+        )
+        self.status_label.pack(pady=5)
+        
+        self.auto_refresh = False
+        self.refresh_processes()
+        self.tree.bind("<Double-Button-1>", lambda e: self.stop_process())
+    
+    def sort_by_column(self, col):
+        """Сортировка по столбцу"""
+        if self.sort_column == col:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_column = col
+            self.sort_reverse = False
+        self.refresh_processes()
+    
+    def refresh_processes(self):
+        """Обновляет список виртуальных процессов"""
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        search_text = self.search_var.get().lower().strip()
+        
+        try:
+            processes = PROCESS_MANAGER.get_processes()
+            
+            # Фильтрация
+            if search_text:
+                processes = [p for p in processes 
+                           if search_text in p['name'].lower() or search_text in str(p['pid'])]
+            
+            # Сортировка
+            if self.sort_column:
+                sort_map = {
+                    "PID": lambda x: x['pid'],
+                    "Имя": lambda x: x['name'].lower(),
+                    "Статус": lambda x: x['status'],
+                    "CPU %": lambda x: x['cpu'],
+                    "Память (MB)": lambda x: x['memory'],
+                    "Время работы": lambda x: x['uptime']
+                }
+                key_func = sort_map.get(self.sort_column, lambda x: 0)
+                processes.sort(key=key_func, reverse=self.sort_reverse)
+            
+            # Отображаем процессы
+            for proc in processes:
+                status_display = {
+                    "running": "▶ Активен",
+                    "sleeping": "💤 Спящий",
+                    "stopped": "⏸ Остановлен"
+                }.get(proc['status'], proc['status'])
+                
+                cpu_value = proc['cpu']
+                
+                if proc['status'] == "stopped":
+                    tag = 'stopped'
+                elif cpu_value > 80:
+                    tag = 'cpu_extreme'
+                elif cpu_value > 50:
+                    tag = 'cpu_high'
+                elif cpu_value > 20:
+                    tag = 'cpu_medium'
+                else:
+                    tag = 'cpu_low'
+                
+                self.tree.insert("", tk.END, values=(
+                    proc['pid'],
+                    f"{proc['icon']} {proc['name']}",
+                    status_display,
+                    f"{proc['cpu']:.1f}%",
+                    f"{proc['memory']:.1f}",
+                    proc['uptime']
+                ), tags=(tag,))
+            
+            # Обновляем статистику
+            stats = PROCESS_MANAGER.get_stats()
+            self.stats_label.config(
+                text=f"🖥️ CPU: {stats['cpu']:.1f}% | 💾 RAM: {stats['memory']} MB / {stats['memory_total']} MB | 📊 {stats['processes']} процессов ({stats['running']} активны)"
+            )
+            self.status_label.config(text=f"✅ Загружено {len(processes)} виртуальных процессов")
+            
+        except Exception as e:
+            self.status_label.config(text=f"❌ Ошибка: {e}")
+    
+    def stop_process(self):
+        """Останавливает выбранный виртуальный процесс"""
+        selected = self.tree.selection()
+        if not selected:
+            self.status_label.config(text="⚠️ Выберите процесс для остановки")
+            return
+        
+        item = selected[0]
+        values = self.tree.item(item, 'values')
+        pid = int(values[0])
+        name = values[1]
+        
+        if messagebox.askyesno("Подтверждение", f"Остановить процесс '{name}' (PID: {pid})?"):
+            if PROCESS_MANAGER.kill_process(pid):
+                self.status_label.config(text=f"⏹ Процесс '{name}' остановлен")
+                self.refresh_processes()
+            else:
+                self.status_label.config(text=f"❌ Ошибка при остановке процесса")
+    
+    def start_process(self):
+        """Запускает остановленный виртуальный процесс"""
+        selected = self.tree.selection()
+        if not selected:
+            self.status_label.config(text="⚠️ Выберите процесс для запуска")
+            return
+        
+        item = selected[0]
+        values = self.tree.item(item, 'values')
+        pid = int(values[0])
+        name = values[1]
+        
+        if PROCESS_MANAGER.start_process(pid):
+            self.status_label.config(text=f"▶ Процесс '{name}' запущен")
+            self.refresh_processes()
+        else:
+            self.status_label.config(text=f"❌ Нельзя запустить этот процесс")
+    
+    def remove_process(self):
+        """Полностью удаляет процесс"""
+        selected = self.tree.selection()
+        if not selected:
+            self.status_label.config(text="⚠️ Выберите процесс для удаления")
+            return
+        
+        item = selected[0]
+        values = self.tree.item(item, 'values')
+        pid = int(values[0])
+        name = values[1]
+        
+        if messagebox.askyesno("Подтверждение", f"Удалить процесс '{name}' (PID: {pid})?\nЭто действие необратимо!"):
+            if PROCESS_MANAGER.remove_process(pid):
+                self.status_label.config(text=f"🗑 Процесс '{name}' удалён")
+                self.refresh_processes()
+            else:
+                self.status_label.config(text=f"❌ Ошибка при удалении")
+    
+    def create_new_process(self):
+        """Создаёт новый виртуальный процесс"""
+        dialog = tk.Toplevel(self.window)
+        dialog.title("➕ Новый виртуальный процесс")
+        dialog.geometry("400x350")
+        dialog.configure(bg=COLORS["window_bg"])
+        dialog.resizable(False, False)
+        
+        tk.Label(dialog, text="➕ Создание виртуального процесса",
+                font=("Segoe UI", 14, "bold"),
+                fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=15)
+        
+        # Поля ввода
+        fields_frame = tk.Frame(dialog, bg=COLORS["window_bg"])
+        fields_frame.pack(pady=10, padx=30, fill=tk.X)
+        
+        tk.Label(fields_frame, text="Имя процесса:", 
+                bg=COLORS["window_bg"], fg=COLORS["fg"],
+                font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 2))
+        
+        name_entry = tk.Entry(fields_frame, bg=COLORS["entry_bg"], fg=COLORS["entry_fg"],
+                              font=("Segoe UI", 10), relief=tk.FLAT)
+        name_entry.pack(fill=tk.X, pady=(0, 10))
+        name_entry.insert(0, "Новый процесс")
+        
+        tk.Label(fields_frame, text="Иконка (эмодзи):", 
+                bg=COLORS["window_bg"], fg=COLORS["fg"],
+                font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 2))
+        
+        icon_entry = tk.Entry(fields_frame, bg=COLORS["entry_bg"], fg=COLORS["entry_fg"],
+                              font=("Segoe UI", 10), relief=tk.FLAT, width=5)
+        icon_entry.pack(anchor="w", pady=(0, 10))
+        icon_entry.insert(0, "🔄")
+        
+        tk.Label(fields_frame, text="Начальная нагрузка CPU (0-100):", 
+                bg=COLORS["window_bg"], fg=COLORS["fg"],
+                font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 2))
+        
+        cpu_scale = tk.Scale(fields_frame, from_=0, to=100, orient=tk.HORIZONTAL,
+                            bg=COLORS["window_bg"], fg=COLORS["fg"],
+                            troughcolor=COLORS["bg_light"])
+        cpu_scale.set(10)
+        cpu_scale.pack(fill=tk.X, pady=(0, 10))
+        
+        tk.Label(fields_frame, text="Память (MB):", 
+                bg=COLORS["window_bg"], fg=COLORS["fg"],
+                font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 2))
+        
+        memory_entry = tk.Entry(fields_frame, bg=COLORS["entry_bg"], fg=COLORS["entry_fg"],
+                                font=("Segoe UI", 10), relief=tk.FLAT)
+        memory_entry.pack(fill=tk.X, pady=(0, 10))
+        memory_entry.insert(0, "32")
+        
+        def create():
+            try:
+                name = name_entry.get().strip()
+                icon = icon_entry.get().strip() or "🔄"
+                cpu = cpu_scale.get()
+                memory = int(memory_entry.get() or 32)
+                
+                if not name:
+                    messagebox.showwarning("Внимание", "Введите имя процесса")
+                    return
+                
+                proc = PROCESS_MANAGER.create_process(name, cpu, memory, icon)
+                dialog.destroy()
+                self.refresh_processes()
+                self.status_label.config(text=f"✅ Создан процесс '{name}' (PID: {proc.pid})")
+            except ValueError:
+                messagebox.showerror("Ошибка", "Введите корректное число для памяти")
+        
+        btn_frame = tk.Frame(dialog, bg=COLORS["window_bg"])
+        btn_frame.pack(pady=15)
+        
+        tk.Button(btn_frame, text="✅ Создать", command=create,
+                 bg=COLORS["accent"], fg=COLORS["bg"],
+                 relief=tk.FLAT, padx=20, pady=5,
+                 font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(btn_frame, text="❌ Отмена", command=dialog.destroy,
+                 bg=COLORS["bg_light"], fg=COLORS["fg"],
+                 relief=tk.FLAT, padx=20, pady=5,
+                 font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=5)
+    
+    def toggle_auto_refresh(self):
+        """Включает/выключает автообновление"""
+        self.auto_refresh = not self.auto_refresh
+        if self.auto_refresh:
+            self.auto_btn.config(text="⏸ Остановить", bg=COLORS["accent"], fg=COLORS["bg"])
+            self.status_label.config(text="🔄 Автообновление включено (каждые 2 сек)")
+            self._auto_refresh_loop()
+        else:
+            self.auto_btn.config(text="▶ Автообновление", bg=COLORS["bg_light"], fg=COLORS["fg"])
+            self.status_label.config(text="⏸ Автообновление выключено")
+    
+    def _auto_refresh_loop(self):
+        """Цикл автообновления"""
+        if self.auto_refresh and self.window.winfo_exists():
+            self.refresh_processes()
+            self.window.after(2000, self._auto_refresh_loop)
+    
+    def show_system_info(self):
+        """Показывает информацию о виртуальной системе"""
+        info_win = tk.Toplevel(self.window)
+        info_win.title("📊 Виртуальная система")
+        info_win.geometry("400x350")
+        info_win.configure(bg=COLORS["window_bg"])
+        
+        tk.Label(info_win, text="📊 Виртуальная система NeoSpace", 
+                font=("Segoe UI", 14, "bold"),
+                fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=15)
+        
+        stats = PROCESS_MANAGER.get_stats()
+        info_data = [
+            f"🧠 Виртуальных процессов: {stats['processes']}",
+            f"▶ Активных: {stats['running']}",
+            f"⏸ Остановленных: {stats['processes'] - stats['running']}",
+            f"📈 Загрузка CPU: {stats['cpu']:.1f}%",
+            f"💾 Использовано RAM: {stats['memory']} MB / {stats['memory_total']} MB",
+            f"📊 Свободно RAM: {stats['memory_total'] - stats['memory']} MB"
+        ]
+        
+        for text in info_data:
+            tk.Label(info_win, text=text, 
+                    font=("Segoe UI", 11),
+                    fg=COLORS["fg"], bg=COLORS["window_bg"]).pack(pady=6, anchor="w", padx=30)
+        
+        tk.Button(info_win, text="Закрыть", command=info_win.destroy,
+                 bg=COLORS["accent"], fg=COLORS["bg"],
+                 relief=tk.FLAT, padx=20, pady=5).pack(pady=15)
 
 # ===================================================
 # ВНУТРЕННЕЕ ОКНО
@@ -893,10 +1527,8 @@ class InternalWindow:
         
         parent.windows.append(self)
         
-        # Ограничиваем окно внутри родителя
         self.window.bind("<Configure>", self._on_configure)
         
-        # Сохраняем относительные координаты для синхронизации
         self._rel_x = self.window.winfo_x() - parent.root.winfo_x()
         self._rel_y = self.window.winfo_y() - parent.root.winfo_y()
     
@@ -967,26 +1599,22 @@ class InternalWindow:
         self.x, self.y = e.x, e.y
     
     def on_move(self, e):
-        # Получаем координаты главного окна
         parent_x = self.parent.root.winfo_x()
         parent_y = self.parent.root.winfo_y()
         parent_width = self.parent.root.winfo_width()
         parent_height = self.parent.root.winfo_height()
         
-        # Текущие координаты окна
         win_x = self.window.winfo_x() + e.x - self.x
         win_y = self.window.winfo_y() + e.y - self.y
         win_width = self.window.winfo_width()
         win_height = self.window.winfo_height()
         
-        # Границы (учитываем панель задач внизу ~50px)
         taskbar_height = 50
         left_limit = parent_x
         right_limit = parent_x + parent_width - win_width
         top_limit = parent_y
         bottom_limit = parent_y + parent_height - win_height - taskbar_height
         
-        # Ограничиваем перемещение
         if win_x < left_limit:
             win_x = left_limit
         if win_x > right_limit:
@@ -1018,7 +1646,6 @@ class InternalWindow:
         dy = e.y_root - self.resize_y
         direction = self.resize_direction
         
-        # Получаем границы главного окна
         parent_x = self.parent.root.winfo_x()
         parent_y = self.parent.root.winfo_y()
         parent_width = self.parent.root.winfo_width()
@@ -1033,7 +1660,6 @@ class InternalWindow:
         min_w = 300
         min_h = 200
         
-        # Ресайз с учётом границ
         if 'e' in direction:
             new_w = max(min_w, self.resize_width + dx)
             if new_x + new_w > parent_x + parent_width:
@@ -1053,7 +1679,6 @@ class InternalWindow:
             if new_y < parent_y:
                 new_h = parent_y + parent_height - taskbar_height - new_y
         
-        # Для углов
         if direction in ['ne', 'nw', 'se', 'sw']:
             if 'e' in direction:
                 new_w = max(min_w, self.resize_width + dx)
@@ -1081,7 +1706,6 @@ class InternalWindow:
             del self.resize_direction
     
     def _on_configure(self, event):
-        """Проверяет, что окно не выходит за границы при любых изменениях"""
         try:
             parent_x = self.parent.root.winfo_x()
             parent_y = self.parent.root.winfo_y()
@@ -1094,7 +1718,6 @@ class InternalWindow:
             win_w = self.window.winfo_width()
             win_h = self.window.winfo_height()
             
-            # Ограничиваем
             if win_x < parent_x:
                 win_x = parent_x
             if win_y < parent_y:
@@ -1166,10 +1789,8 @@ class NeoSpaceOS:
         self._build_ui()
         self._update_clock()
         
-        # СОЗДАЁМ ОБЪЕКТ ДЛЯ РЕСАЙЗА
         self.resize_grip = ResizeGrip(self)
         
-        # Синхронизация окон при старте
         self.root.after(100, self._sync_windows)
         
         print(f"🧠 NeoSpace OS запущена")
@@ -1183,7 +1804,6 @@ class NeoSpaceOS:
             print("⚠️ tkinterweb не установлен. Внутренний браузер недоступен.")
     
     def _sync_windows(self):
-        """Синхронизирует положение всех внутренних окон с главным окном"""
         try:
             parent_x = self.root.winfo_x()
             parent_y = self.root.winfo_y()
@@ -1191,7 +1811,6 @@ class NeoSpaceOS:
             for window in self.windows:
                 try:
                     if window.window.winfo_exists():
-                        # Устанавливаем окно на те же относительные координаты
                         new_x = parent_x + window._rel_x
                         new_y = parent_y + window._rel_y
                         window.window.geometry(f"+{new_x}+{new_y}")
@@ -1201,7 +1820,6 @@ class NeoSpaceOS:
             pass
     
     def _build_ui(self):
-        # === ЗАГОЛОВОК ===
         self.title_bar = tk.Frame(self.root, bg=COLORS["taskbar"], height=40)
         self.title_bar.pack(fill="x", side="top")
         self.title_bar.pack_propagate(False)
@@ -1242,14 +1860,12 @@ class NeoSpaceOS:
                                     fg=COLORS["fg"], bg=COLORS["taskbar"])
         self.clock_label.pack(side="right", padx=20)
         
-        # === РАБОЧИЙ СТОЛ ===
         self.desktop = tk.Frame(self.root, bg=COLORS["bg"])
         self.desktop.pack(fill="both", expand=True)
         
         self._create_wallpaper()
         self._create_desktop_icons()
         
-        # === ПАНЕЛЬ ЗАДАЧ ===
         self.task_bar = tk.Frame(self.root, bg=COLORS["taskbar"], height=50)
         self.task_bar.pack(side="bottom", fill="x")
         self.task_bar.pack_propagate(False)
@@ -1261,9 +1877,11 @@ class NeoSpaceOS:
                              relief="flat", cursor="hand2")
         start_btn.pack(side="left", padx=15, pady=8)
         
+        # ===== КНОПКИ НА ПАНЕЛИ ЗАДАЧ =====
         for text, cmd in [("📁 Файлы", self.open_file_manager),
                          ("🧠 AI", self.open_ai_chat),
                          ("🌐 Интернет", self.open_browser),
+                         ("📊 Диспетчер задач", self.open_task_manager),
                          ("⚙️ Настройки", self.open_settings)]:
             btn = tk.Button(self.task_bar, text=text, command=cmd,
                            bg=COLORS["taskbar"], fg=COLORS["fg"],
@@ -1276,7 +1894,6 @@ class NeoSpaceOS:
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
         
-        # === КНОПКА ВЫХОДА ИЗ ПОЛНОЭКРАННОГО РЕЖИМА ===
         self.exit_fullscreen_btn = tk.Button(
             self.task_bar, 
             text="⛶ Выйти из полноэкранного режима", 
@@ -1345,7 +1962,8 @@ class NeoSpaceOS:
             ("🧠 AI-помощник", self.open_ai_chat, 60, 200),
             ("⚙️ Настройки", self.open_settings, 60, 340),
             ("🌐 Браузер", self.open_browser, 60, 480),
-            ("⏻ Выключить", self.close, 60, 620),
+            ("📊 Диспетчер задач", self.open_task_manager, 60, 620),
+            ("⏻ Выключить", self.close, 60, 760),
         ]
         
         for text, cmd, x, y in icons:
@@ -1366,7 +1984,6 @@ class NeoSpaceOS:
     def start_move(self, e):
         self.x = e.x
         self.y = e.y
-        # Сохраняем начальные позиции всех окон
         self.window_positions = []
         for window in self.windows:
             try:
@@ -1380,12 +1997,10 @@ class NeoSpaceOS:
                 pass
     
     def on_move(self, e):
-        # Двигаем главное окно
         x = self.root.winfo_x() + e.x - self.x
         y = self.root.winfo_y() + e.y - self.y
         self.root.geometry(f"+{x}+{y}")
         
-        # Двигаем все внутренние окна вместе с главным
         for window in self.windows:
             try:
                 if window.window.winfo_exists():
@@ -1395,16 +2010,13 @@ class NeoSpaceOS:
             except:
                 pass
         
-        # Обновляем относительные координаты
         self._sync_windows()
     
     def minimize(self):
         self.root.iconify()
     
     def toggle_fullscreen(self):
-        """Переключает полноэкранный режим"""
         if self.fullscreen:
-            # Выход из полноэкранного режима
             self.root.geometry(self.normal_geometry)
             self.fullscreen = False
             self.title_bar.pack(fill="x", side="top")
@@ -1413,7 +2025,6 @@ class NeoSpaceOS:
             self._on_resize_wallpaper(None)
             self._sync_windows()
         else:
-            # Вход в полноэкранный режим
             self.normal_geometry = self.root.geometry()
             self.fullscreen = True
             self.title_bar.pack_forget()
@@ -1432,23 +2043,19 @@ class NeoSpaceOS:
             self.root.destroy()
             sys.exit(0)
     
-    # === МЕТОДЫ ДЛЯ БРАУЗЕРА (ИСПРАВЛЕННЫЕ) ===
+    # === МЕТОДЫ ДЛЯ БРАУЗЕРА ===
     def open_browser(self):
         browser_path = get_browser_path()
         
-        # Если браузер уже скопирован в виртуальную папку
         if browser_path and os.path.exists(browser_path) and VIRTUAL_PATH in browser_path:
             self.open_browser_external()
             return
         
-        # Если браузер не выбран или не существует
         if not browser_path or not os.path.exists(browser_path):
-            # Проверяем, есть ли браузер в виртуальной папке
             browser_dir = os.path.join(VIRTUAL_PATH, "Browser")
             if os.path.exists(browser_dir):
                 for file in os.listdir(browser_dir):
                     if file.endswith(".exe"):
-                        # Нашли браузер в виртуальной папке
                         virtual_browser = os.path.join(browser_dir, file)
                         if set_browser_path(virtual_browser):
                             self.open_browser_external()
@@ -1527,7 +2134,6 @@ class NeoSpaceOS:
             return
         
         try:
-            # Запускаем браузер
             if OS_TYPE == "windows":
                 subprocess.Popen([browser_path], shell=False)
             else:
@@ -1553,11 +2159,9 @@ class NeoSpaceOS:
         if not path:
             return
         
-        # Копируем браузер в виртуальную папку
         virtual_path = copy_browser_to_virtual(path)
         
         if virtual_path and os.path.exists(virtual_path):
-            # Сохраняем путь к скопированному браузеру
             if set_browser_path(virtual_path):
                 if self.status_label:
                     self.status_label.config(text=f"✅ Браузер скопирован и сохранён: {os.path.basename(virtual_path)}")
@@ -1567,7 +2171,6 @@ class NeoSpaceOS:
                                    f"📂 Виртуальный: {virtual_path}\n\n"
                                    f"Теперь браузер будет работать внутри NeoSpace!")
                 
-                # Запускаем браузер
                 if messagebox.askyesno("🚀 Запуск", "Запустить браузер сейчас?"):
                     self.open_browser_external()
             else:
@@ -1674,7 +2277,6 @@ class NeoSpaceOS:
         win = InternalWindow(self, "🧠 AI-помощник", 650, 550)
         content = win.get_content()
         
-        # === ВЕРХНЯЯ ПАНЕЛЬ С ВЫБОРОМ МОДЕЛИ ===
         top_frame = tk.Frame(content, bg=COLORS["window_bg"])
         top_frame.pack(fill="x", padx=10, pady=5)
         
@@ -1697,10 +2299,8 @@ class NeoSpaceOS:
         model_menu.pack(side="left", padx=5)
         model_menu.current(0)
         
-        # Сохраняем соответствие имя → модель
         model_map = {name: model for name, model in model_options}
         
-        # === ОБЛАСТЬ ЧАТА ===
         chat_frame = tk.Frame(content, bg=COLORS["window_bg"])
         chat_frame.pack(fill="both", expand=True, padx=10, pady=5)
         
@@ -1712,7 +2312,6 @@ class NeoSpaceOS:
         chat_area.insert(tk.END, "💡 Напиши что-нибудь!\n\n")
         chat_area.config(state="disabled")
         
-        # === СТРОКА ВВОДА ===
         input_frame = tk.Frame(content, bg=COLORS["window_bg"])
         input_frame.pack(fill="x", padx=10, pady=5)
         
@@ -1720,13 +2319,11 @@ class NeoSpaceOS:
                          font=("Segoe UI", 11), relief="flat")
         entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
         
-        # === СТАТУС ===
         status_label = tk.Label(content, text="✅ Готов к работе", 
                                 bg=COLORS["window_bg"], fg=COLORS["fg_secondary"],
                                 font=("Segoe UI", 9))
         status_label.pack(pady=2)
         
-        # === КНОПКА ОЧИСТКИ ===
         clear_btn = tk.Button(input_frame, text="🗑 Очистить", 
                               command=lambda: [chat_area.config(state="normal"),
                                                chat_area.delete(1.0, tk.END),
@@ -1736,17 +2333,14 @@ class NeoSpaceOS:
                               font=("Segoe UI", 10), relief="flat")
         clear_btn.pack(side="right", padx=5)
         
-        # === ФУНКЦИЯ ОТПРАВКИ ===
         def send_message():
             text = entry.get().strip()
             if not text:
                 return
             
-            # Получаем выбранную модель
             model_name = model_menu.get()
             model_id = model_map.get(model_name, "qwen2.5-coder:1.5b")
             
-            # Показываем сообщение пользователя
             chat_area.config(state="normal")
             chat_area.insert(tk.END, f"👤: {text}\n")
             chat_area.config(state="disabled")
@@ -1755,7 +2349,6 @@ class NeoSpaceOS:
             
             def ask_ai():
                 try:
-                    # Проверяем Ollama
                     try:
                         check = requests.get("http://localhost:11434/api/tags", timeout=2)
                         if check.status_code != 200:
@@ -1782,7 +2375,6 @@ class NeoSpaceOS:
                             pass
                         raise Exception("Ollama не запущена. Установите Ollama")
                     
-                    # Проверяем, есть ли модель
                     try:
                         tags = requests.get("http://localhost:11434/api/tags", timeout=2).json()
                         available_models = [m["name"] for m in tags.get("models", [])]
@@ -1791,7 +2383,6 @@ class NeoSpaceOS:
                     except:
                         pass
                     
-                    # Отправляем запрос
                     response = requests.post(
                         "http://localhost:11434/api/generate",
                         json={
@@ -1822,13 +2413,11 @@ class NeoSpaceOS:
             thread.daemon = True
             thread.start()
         
-        # === КНОПКА ОТПРАВКИ ===
         btn = tk.Button(input_frame, text="➤ Отправить", command=send_message,
                         bg=COLORS["accent"], fg=COLORS["bg"],
                         font=("Segoe UI", 11, "bold"), relief="flat")
         btn.pack(side="right")
         
-        # При смене модели — обновляем статус
         def on_model_change(event):
             status_label.config(text=f"🧠 Модель: {model_menu.get()}", fg=COLORS["fg_secondary"])
             chat_area.config(state="normal")
@@ -1843,7 +2432,6 @@ class NeoSpaceOS:
         win = InternalWindow(self, "⚙️ Настройки", 650, 700, resizable=True)
         content = win.get_content()
         
-        # === КОНТЕЙНЕР С ПРОКРУТКОЙ ===
         canvas = tk.Canvas(content, bg=COLORS["window_bg"], highlightthickness=0)
         scrollbar = ttk.Scrollbar(content, orient="vertical", command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg=COLORS["window_bg"])
@@ -1859,7 +2447,6 @@ class NeoSpaceOS:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-        # === ПРИВЯЗКА КОЛЁСИКА МЫШИ ===
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         
@@ -1871,12 +2458,10 @@ class NeoSpaceOS:
         
         _bind_mousewheel(scrollable_frame)
         
-        # === ЗАГОЛОВОК ===
         tk.Label(scrollable_frame, text="⚙️ Настройки системы", 
                 font=("Segoe UI", 16, "bold"),
                 fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=15)
         
-        # === ИНФОРМАЦИЯ ===
         info_data = [
             f"🖥️ Оболочка: {OS_NAME}",
             f"⚡ Герцовка: {HZ} Гц",
@@ -1897,12 +2482,10 @@ class NeoSpaceOS:
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
-        # === ПУТЬ К БРАУЗЕРУ ===
         tk.Label(scrollable_frame, text="🌐 Путь к браузеру:", 
                 font=("Segoe UI", 12, "bold"),
                 fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=5, anchor="w", padx=30)
         
-        # Поле для ввода пути
         path_frame = tk.Frame(scrollable_frame, bg=COLORS["window_bg"])
         path_frame.pack(fill="x", padx=30, pady=5)
         
@@ -1914,7 +2497,6 @@ class NeoSpaceOS:
                               insertbackground=COLORS["fg"])
         path_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
         
-        # Кнопка вставки из буфера обмена
         def paste_path():
             try:
                 clipboard_text = self.root.clipboard_get()
@@ -1931,7 +2513,6 @@ class NeoSpaceOS:
                              font=("Segoe UI", 10), relief="flat")
         btn_paste.pack(side="left", padx=5)
         
-        # Кнопка обзора
         def browse_path():
             if OS_TYPE == "windows":
                 filetypes = [("Исполняемые файлы", "*.exe"), ("Все файлы", "*.*")]
@@ -1944,13 +2525,11 @@ class NeoSpaceOS:
             )
             
             if path:
-                # Копируем в виртуальную папку
                 virtual_path = copy_browser_to_virtual(path)
                 if virtual_path:
                     browser_path_var.set(virtual_path)
                     if self.status_label:
                         self.status_label.config(text=f"📂 Браузер скопирован: {os.path.basename(virtual_path)}")
-                    # Сохраняем настройки
                     if set_browser_path(virtual_path):
                         messagebox.showinfo("✅ Успех", 
                                            f"✅ Браузер скопирован и сохранён!\n\n"
@@ -1964,7 +2543,6 @@ class NeoSpaceOS:
                               font=("Segoe UI", 10), relief="flat")
         btn_browse.pack(side="left", padx=5)
         
-        # Кнопка сохранения пути
         def save_path():
             path = browser_path_var.get().strip()
             if path and os.path.exists(path):
@@ -1983,7 +2561,6 @@ class NeoSpaceOS:
                             font=("Segoe UI", 10, "bold"), relief="flat")
         btn_save.pack(side="left", padx=5)
         
-        # Информация о текущем пути
         current_path = get_browser_path()
         if current_path:
             tk.Label(scrollable_frame, text=f"📌 Текущий путь: {current_path}", 
@@ -1992,7 +2569,6 @@ class NeoSpaceOS:
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
-        # === НАСТРОЙКИ БРАУЗЕРА ===
         btn_frame = tk.Frame(scrollable_frame, bg=COLORS["window_bg"])
         btn_frame.pack(pady=5)
         
@@ -2022,12 +2598,10 @@ class NeoSpaceOS:
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
-        # === ТЕМЫ ===
         tk.Label(scrollable_frame, text="🎨 Выбор темы", 
                 font=("Segoe UI", 14, "bold"),
                 fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=5)
         
-        # Серьёзные темы
         tk.Label(scrollable_frame, text="━━━ 🏛️ Серьёзный стиль ━━━", 
                 font=("Segoe UI", 11),
                 fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
@@ -2045,7 +2619,6 @@ class NeoSpaceOS:
                            font=("Segoe UI", 10), relief="flat")
             btn.pack(side="left", padx=3, pady=2)
         
-        # Красивые темы
         tk.Label(scrollable_frame, text="━━━ ✨ Красивый стиль ━━━", 
                 font=("Segoe UI", 11),
                 fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
@@ -2065,7 +2638,6 @@ class NeoSpaceOS:
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
-        # === ГЕРЦОВКА ===
         tk.Label(scrollable_frame, text="⚡ Изменить герцовку:", 
                 font=("Segoe UI", 11),
                 fg=COLORS["fg"], bg=COLORS["window_bg"]).pack(pady=5)
@@ -2082,7 +2654,6 @@ class NeoSpaceOS:
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
-        # === ПОДСКАЗКИ ===
         tk.Label(scrollable_frame, text="💡 Изменить ОС можно перезапустив launcher.py", 
                 font=("Segoe UI", 10),
                 fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
@@ -2096,7 +2667,6 @@ class NeoSpaceOS:
                 fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
     
     def open_games(self):
-        """Открывает меню выбора игр"""
         win = InternalWindow(self, "🎮 Игры", 550, 450)
         content = win.get_content()
         
@@ -2139,31 +2709,28 @@ class NeoSpaceOS:
                     font=("Segoe UI", 11),
                     fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(side="left", padx=10)
     
+    def open_task_manager(self):
+        """Открывает виртуальный диспетчер задач"""
+        VirtualTaskManager(self)
+    
     def change_theme(self, theme_name):
-        """Меняет тему оформления с прогресс-баром"""
         global COLORS
         
-        # Проверяем, не та же ли тема
         if get_current_theme() == theme_name:
             messagebox.showinfo("Информация", f"Тема '{get_theme_display_name(theme_name)}' уже активна")
             return
         
         def apply_theme():
-            # Сохраняем тему в настройки
             if set_theme(theme_name):
-                # Обновляем цвета
                 update_colors(theme_name)
                 
-                # Обновляем все элементы интерфейса
                 self.root.configure(bg=COLORS["bg"])
                 self.desktop.configure(bg=COLORS["bg"])
                 self.task_bar.configure(bg=COLORS["taskbar"])
                 self.title_bar.configure(bg=COLORS["taskbar"])
                 
-                # Обновляем обои
                 self._on_resize_wallpaper(None)
                 
-                # Обновляем заголовок
                 for child in self.title_bar.winfo_children():
                     if isinstance(child, tk.Label) and "NeoSpace OS" in child.cget('text'):
                         child.config(fg=COLORS["accent"])
@@ -2172,7 +2739,6 @@ class NeoSpaceOS:
                             if isinstance(subchild, tk.Button):
                                 subchild.config(bg=COLORS["taskbar"])
                 
-                # Обновляем кнопки на панели задач
                 for child in self.task_bar.winfo_children():
                     if isinstance(child, tk.Button):
                         if "Выйти из полноэкранного" in child.cget('text'):
@@ -2180,19 +2746,16 @@ class NeoSpaceOS:
                         else:
                             child.config(bg=COLORS["taskbar"], fg=COLORS["fg"])
                 
-                # Обновляем часы и статус
                 self.clock_label.config(fg=COLORS["fg"], bg=COLORS["taskbar"])
                 self.task_clock.config(fg=COLORS["fg"], bg=COLORS["taskbar"])
                 if self.status_label:
                     self.status_label.config(fg=COLORS["fg"], bg=COLORS["taskbar"])
                 
-                # Обновляем все открытые окна
                 for window in self.windows:
                     try:
                         window.window.configure(bg=COLORS["window_bg"])
                         window.title_bar.configure(bg=COLORS["taskbar"])
                         window.content_frame.configure(bg=COLORS["window_bg"])
-                        # Обновляем кнопки в окне
                         for child in window.title_bar.winfo_children():
                             if isinstance(child, tk.Frame):
                                 for subchild in child.winfo_children():
@@ -2203,25 +2766,21 @@ class NeoSpaceOS:
                     except:
                         pass
                 
-                # Обновляем кнопки на рабочем столе
                 for child in self.desktop.winfo_children():
                     if isinstance(child, tk.Button):
                         child.config(bg=COLORS["bg"], fg=COLORS["fg"])
                         child.bind("<Enter>", lambda e, b=child: b.config(bg=COLORS["bg_light"]))
                         child.bind("<Leave>", lambda e, b=child: b.config(bg=COLORS["bg"]))
                 
-                # Обновляем статус
                 if self.status_label:
                     self.status_label.config(text=f"🎨 Тема: {get_theme_display_name(theme_name)}")
                 
-                # Обновляем resize зоны
                 for zone in self.resize_grip._resize_zones:
                     try:
                         zone.configure(bg=COLORS["resize_color"])
                     except:
                         pass
                 
-                # Закрываем настройки и открываем заново
                 for window in self.windows[:]:
                     if "Настройки" in window.window.title():
                         window.close()
@@ -2233,7 +2792,6 @@ class NeoSpaceOS:
             else:
                 messagebox.showerror("Ошибка", "Не удалось сохранить тему")
         
-        # Показываем прогресс-бар
         ThemeProgressDialog(self, theme_name, apply_theme)
     
     def change_hz(self, new_hz):
@@ -2269,6 +2827,7 @@ class NeoSpaceOS:
             ("🧠 AI-помощник", self.open_ai_chat),
             ("🌐 Браузер", self.open_browser),
             ("🎮 Игры", self.open_games),
+            ("📊 Диспетчер задач", self.open_task_manager),
             ("⚙️ Настройки", self.open_settings),
             ("📊 Статистика", self.show_stats),
             ("🧹 Очистить", self.clear_desktop),
@@ -2349,13 +2908,13 @@ class NeoSpaceOS:
 # ===================================================
 if __name__ == "__main__":
     print("=" * 55)
-    print("🧠 NeoSpace OS")
+    print("🧠 NeoSpace OS - Виртуальная среда")
     print(f"🖥️ Режим: {OS_NAME}")
     print(f"⚡ Виртуальная герцовка: {HZ} Гц")
-    print(f"🌐 Режим браузера: {'Внутренний' if get_browser_mode() == 'internal' else 'Внешний'}")
+    print(f"🔧 Виртуальных процессов: {len(PROCESS_MANAGER.processes)}")
     print(f"🎨 Тема: {get_theme_display_name(get_current_theme())}")
     print("💡 F11 — переключить полноэкранный режим")
-    print("🖱️ Тяните за края и углы окна для изменения размера")
+    print("📊 Диспетчер задач управляет только виртуальными процессами!")
     if not TKINTERWEB_AVAILABLE:
         print("⚠️ tkinterweb не установлен. Внутренний браузер недоступен.")
     print("=" * 55)

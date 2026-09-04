@@ -7,27 +7,19 @@
       "icon": "🧠",
       "color": "#00d4ff",
       "description": "Локальный AI-чат с 24 темами и персонажами",
-      "tags": [
-        "AI",
-        "Chat"
-      ],
       "type": "python",
       "launches": 0,
       "favorite": false
     },
     "neospace": {
-      "name": "NeoSpace-Pro",
-      "version": "1.0.0",
+      "name": "NeoSpace OS",
+      "version": "2.0.0",
       "path": "projects/neospace.py",
       "icon": "🖥️",
       "color": "#8b5cf6",
       "description": "Виртуальная среда для экспериментов",
-      "tags": [
-        "Virtual",
-        "Sandbox"
-      ],
       "type": "python",
-      "launches": 2,
+      "launches": 0,
       "favorite": false
     },
     "whydoes": {
@@ -37,12 +29,19 @@
       "icon": "🌀",
       "color": "#fbbf24",
       "description": "Генератор визуального безумия",
-      "tags": [
-        "Visual",
-        "Art"
-      ],
       "type": "python",
-      "launches": 2,
+      "launches": 0,
+      "favorite": false
+    },
+    "neoreceipt": {
+      "name": "🧾 NeoReceipt 2.0",
+      "version": "2.0.0",
+      "path": "projects/neoreceipt.py",
+      "icon": "🧾",
+      "color": "#58a6ff",
+      "description": "Генератор чеков с Live Preview, мульти-товарами и шаблонами",
+      "type": "python",
+      "launches": 0,
       "favorite": false
     }
   }
