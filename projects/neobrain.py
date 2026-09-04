@@ -104,7 +104,7 @@ LANGUAGES = {
 }
 
 # ======================================================
-# ТЕМЫ (ТОЛЬКО ВИЗУАЛ)
+# ТЕМЫ (ТОЛЬКО ВИЗУАЛ, НЕ ВЛИЯЮТ НА ОТВЕТЫ)
 # ======================================================
 
 THEMES = {
@@ -481,7 +481,9 @@ class NeoBrainChat(QMainWindow):
     def toggle_language(self):
         self.lang = "en" if self.lang == "ru" else "ru"
         self.T = LANGUAGES[self.lang]
+        self.lang_btn.setText("Русский" if self.lang == "ru" else "English")
         self.update_ui_texts()
+        self.add_system_message("✦ NeoBrain", self.T["welcome"])
 
     def update_ui_texts(self):
         self.setWindowTitle(self.T["title"])
@@ -497,6 +499,7 @@ class NeoBrainChat(QMainWindow):
         self.clear_btn.setText(self.T["clear"])
         self.input_field.setPlaceholderText(self.T["send_placeholder"])
         self.status_text.setText(self.T["status_ready"])
+        self.lang_btn.setText("Русский" if self.lang == "ru" else "English")
 
     # ============================================================
     # АВТОЗАПУСК OLLAMA
@@ -562,7 +565,8 @@ class NeoBrainChat(QMainWindow):
             "history": [],
             "auto_save": True,
             "stream_mode": True,
-            "max_tokens": 512
+            "max_tokens": 512,
+            "lang": "ru"
         }
         try:
             if os.path.exists(path):
@@ -775,6 +779,32 @@ class NeoBrainChat(QMainWindow):
         self.refresh_btn.clicked.connect(lambda: threading.Thread(target=self.load_models, daemon=True).start())
         sidebar_layout.addWidget(self.refresh_btn)
 
+        # ===== ЯЗЫК =====
+        sidebar_layout.addSpacing(10)
+
+        self.lang_label = QLabel("🌐 Язык")
+        self.lang_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        sidebar_layout.addWidget(self.lang_label)
+
+        self.lang_btn = QPushButton("Русский" if self.lang == "ru" else "English")
+        self.lang_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(13,13,32,0.9);
+                border: 1px solid rgba(42,42,90,0.3);
+                border-radius: 10px;
+                padding: 8px 14px;
+                color: #eeeef8;
+                text-align: left;
+                min-height: 38px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                border: 1px solid #4facfe;
+            }
+        """)
+        self.lang_btn.clicked.connect(self.toggle_language)
+        sidebar_layout.addWidget(self.lang_btn)
+
         sidebar_layout.addSpacing(10)
 
         self.stream_label = QLabel(self.T["stream"])
@@ -917,7 +947,6 @@ class NeoBrainChat(QMainWindow):
         self.send_btn.clicked.connect(self.send_message)
         bottom_layout.addWidget(self.send_btn)
 
-        # Кнопка остановки (скрыта по умолчанию)
         self.stop_btn = QPushButton("⏹")
         self.stop_btn.setObjectName("stop_btn")
         self.stop_btn.setVisible(False)
@@ -1014,7 +1043,7 @@ class NeoBrainChat(QMainWindow):
             self.sidebar_trigger_btn.move(0, y_pos)
 
     # ============================================================
-    # ПОТОКОВЫЙ РЕЖИМ И ОСТАНОВКА
+    # ПОТОКОВЫЙ РЕЖИМ
     # ============================================================
 
     def toggle_stream_mode(self):
@@ -1331,7 +1360,6 @@ class NeoBrainChat(QMainWindow):
         self.is_generating = True
         self.stop_generation = False
 
-        # Меняем кнопку отправки на кнопку остановки
         self.send_btn.setVisible(False)
         self.stop_btn.setVisible(True)
         self.typing_label.setText(self.T["status_typing"])
@@ -1417,7 +1445,6 @@ class NeoBrainChat(QMainWindow):
                 else:
                     ai_bubble.set_text(f"⚠️ Ошибка API: {r.status_code}")
 
-            # Если остановили генерацию — убираем сообщение
             if self.stop_generation:
                 if ai_bubble:
                     ai_bubble.set_text("⏹ Генерация остановлена")
