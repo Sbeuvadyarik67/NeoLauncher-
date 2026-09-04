@@ -1,2962 +1,1452 @@
-# -*- coding: utf-8 -*-
-import os
 import sys
 import json
-import requests
-import socket
-import time
+import os
 import threading
+import requests
 import subprocess
-import shutil
-import logging
-import random
-import sqlite3
-import re
+import time
 from datetime import datetime
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, FileResponse
-import uvicorn
-import tkinter as tk
+from PySide6.QtWidgets import *
+from PySide6.QtCore import *
+from PySide6.QtGui import *
 
-# ============================================================
-# ОКНО ВЫБОРА ЯЗЫКА ПРИ ЗАПУСКЕ
-# ============================================================
+# ======================================================
+# ЯЗЫКИ
+# ======================================================
 
-def show_language_selector():
-    """Показывает окно выбора языка при первом запуске"""
-    root = tk.Tk()
-    root.title("🌐 Language / Язык")
-    root.geometry("620x520")
-    root.configure(bg="#0a0e1a")
-    root.resizable(False, False)
-    root.overrideredirect(True)
-    
-    # Центрируем
-    root.update_idletasks()
-    x = (root.winfo_screenwidth() - 620) // 2
-    y = (root.winfo_screenheight() - 520) // 2
-    root.geometry(f"+{x}+{y}")
-    
-    main_frame = tk.Frame(root, bg="#0a0e1a")
-    main_frame.pack(fill=tk.BOTH, expand=True, padx=25, pady=25)
-    
-    tk.Label(
-        main_frame,
-        text="🌐 ВЫБЕРИТЕ ЯЗЫК / SELECT LANGUAGE",
-        font=("Segoe UI", 22, "bold"),
-        bg="#0a0e1a",
-        fg="#00d4ff"
-    ).pack(pady=(10, 15))
-    
-    tk.Label(
-        main_frame,
-        text="Choose interface language / Выберите язык интерфейса",
-        font=("Segoe UI", 14),
-        bg="#0a0e1a",
-        fg="#88bbdd"
-    ).pack(pady=(0, 25))
-    
-    lang_var = tk.StringVar(value="ru")
-    
-    radio_frame = tk.Frame(main_frame, bg="#0a0e1a")
-    radio_frame.pack(pady=10)
-    
-    ru_btn = tk.Radiobutton(
-        radio_frame,
-        text="🇷🇺 РУССКИЙ / RUSSIAN",
-        variable=lang_var,
-        value="ru",
-        bg="#0a0e1a",
-        fg="#e0f0ff",
-        selectcolor="#0a0e1a",
-        font=("Segoe UI", 18, "bold"),
-        relief=tk.FLAT,
-        cursor="hand2",
-        activebackground="#0a0e1a",
-        activeforeground="#00d4ff"
-    )
-    ru_btn.pack(anchor=tk.W, padx=50, pady=8)
-    
-    en_btn = tk.Radiobutton(
-        radio_frame,
-        text="🇬🇧 ENGLISH / АНГЛИЙСКИЙ",
-        variable=lang_var,
-        value="en",
-        bg="#0a0e1a",
-        fg="#e0f0ff",
-        selectcolor="#0a0e1a",
-        font=("Segoe UI", 18, "bold"),
-        relief=tk.FLAT,
-        cursor="hand2",
-        activebackground="#0a0e1a",
-        activeforeground="#00d4ff"
-    )
-    en_btn.pack(anchor=tk.W, padx=50, pady=8)
-    
-    remember_var = tk.BooleanVar(value=True)
-    
-    remember_frame = tk.Frame(main_frame, bg="#0a0e1a")
-    remember_frame.pack(pady=20)
-    
-    remember_cb = tk.Checkbutton(
-        remember_frame,
-        text="✅ ЗАПОМНИТЬ ВЫБОР / REMEMBER MY CHOICE",
-        variable=remember_var,
-        bg="#0a0e1a",
-        fg="#ffd93d",
-        selectcolor="#0a0e1a",
-        font=("Segoe UI", 14, "bold"),
-        relief=tk.FLAT,
-        cursor="hand2",
-        activebackground="#0a0e1a",
-        activeforeground="#ffd93d"
-    )
-    remember_cb.pack()
-    
-    result = {"lang": "ru", "remember": True}
-    
-    def apply_language():
-        result["lang"] = lang_var.get()
-        result["remember"] = remember_var.get()
-        root.destroy()
-    
-    btn_frame = tk.Frame(main_frame, bg="#0a0e1a")
-    btn_frame.pack(pady=15)
-    
-    apply_btn = tk.Button(
-        btn_frame,
-        text="✅ ПРИМЕНИТЬ И ЗАПУСТИТЬ / APPLY & LAUNCH",
-        font=("Segoe UI", 16, "bold"),
-        bg="#00d4ff",
-        fg="#0a0e1a",
-        relief=tk.FLAT,
-        padx=40,
-        pady=14,
-        command=apply_language,
-        cursor="hand2",
-        activebackground="#00aaff",
-        activeforeground="#0a0e1a"
-    )
-    apply_btn.pack()
-    
-    tk.Label(
-        main_frame,
-        text="После выбора языка NeoBrain автоматически запустится",
-        font=("Segoe UI", 11),
-        bg="#0a0e1a",
-        fg="#556688"
-    ).pack(pady=(10, 0))
-    
-    root.wait_window(root)
-    return result["lang"], result["remember"]
+LANGUAGES = {
+    "ru": {
+        "title": "✦ NeoBrain",
+        "settings": "✦ Настройки",
+        "hide": "◀ Скрыть",
+        "show": "▶ Показать",
+        "theme": "🎯 Тема",
+        "model": "🧠 Модель",
+        "refresh": "🔄 Обновить модели",
+        "stream": "💬 Потоковый ответ",
+        "stream_check": "Включить плавный вывод",
+        "character": "👤 Персонаж",
+        "create_character": "➕ Создать персонажа",
+        "clear": "🗑 Очистить чат",
+        "send_placeholder": "Напишите сообщение… (Enter для отправки)",
+        "status_ready": "✦ Готов к работе",
+        "status_checking": "⏳ Проверка Ollama...",
+        "status_ollama_ok": "✅ Ollama запущен",
+        "status_ollama_error": "⚠️ Ollama не доступен",
+        "status_launch": "⏳ Запуск Ollama...",
+        "status_ollama_fail": "⚠️ Не удалось запустить Ollama",
+        "status_ollama_started": "✅ Ollama запущен",
+        "status_typing": "💬 Печатает...",
+        "status_error": "❌ Ошибка: {e}",
+        "character_title": "✦ Создать персонажа",
+        "character_name": "👤 Имя персонажа:",
+        "character_gender": "⚧ Пол:",
+        "character_male": "♂ Мужской",
+        "character_female": "♀ Женский",
+        "character_personality": "🧠 Характер (личность):",
+        "character_desc": "📝 Описание (как отвечает, стиль речи, манера):",
+        "character_create": "✅ Создать",
+        "character_cancel": "Отмена",
+        "character_error": "Ошибка",
+        "character_error_name": "Введите имя персонажа!",
+        "character_created": "✅ Создан персонаж: {name} ({gender})",
+        "msg_count": "Сообщений: {count}",
+        "clear_confirm": "Очистка",
+        "clear_confirm_text": "Удалить всю историю чата?",
+        "chat_cleared": "Чат очищен.",
+        "model_changed": "Модель изменена на: {model}",
+        "theme_changed": "Тема изменена на: {theme}",
+        "welcome": "Привет! Я твой AI-помощник. Начни диалог или выбери тему.",
+    },
+    "en": {
+        "title": "✦ NeoBrain",
+        "settings": "✦ Settings",
+        "hide": "◀ Hide",
+        "show": "▶ Show",
+        "theme": "🎯 Theme",
+        "model": "🧠 Model",
+        "refresh": "🔄 Refresh models",
+        "stream": "💬 Stream mode",
+        "stream_check": "Enable smooth output",
+        "character": "👤 Character",
+        "create_character": "➕ Create character",
+        "clear": "🗑 Clear chat",
+        "send_placeholder": "Type a message… (Enter to send)",
+        "status_ready": "✦ Ready",
+        "status_checking": "⏳ Checking Ollama...",
+        "status_ollama_ok": "✅ Ollama running",
+        "status_ollama_error": "⚠️ Ollama unavailable",
+        "status_launch": "⏳ Starting Ollama...",
+        "status_ollama_fail": "⚠️ Failed to start Ollama",
+        "status_ollama_started": "✅ Ollama started",
+        "status_typing": "💬 Typing...",
+        "status_error": "❌ Error: {e}",
+        "character_title": "✦ Create character",
+        "character_name": "👤 Character name:",
+        "character_gender": "⚧ Gender:",
+        "character_male": "♂ Male",
+        "character_female": "♀ Female",
+        "character_personality": "🧠 Personality:",
+        "character_desc": "📝 Description (style, manner):",
+        "character_create": "✅ Create",
+        "character_cancel": "Cancel",
+        "character_error": "Error",
+        "character_error_name": "Enter character name!",
+        "character_created": "✅ Character created: {name} ({gender})",
+        "msg_count": "Messages: {count}",
+        "clear_confirm": "Clear",
+        "clear_confirm_text": "Delete entire chat history?",
+        "chat_cleared": "Chat cleared.",
+        "model_changed": "Model changed to: {model}",
+        "theme_changed": "Theme changed to: {theme}",
+        "welcome": "Hi! I'm your AI assistant. Start a conversation or choose a theme.",
+    }
+}
 
-def get_language():
-    """Получает язык из настроек или показывает окно выбора"""
-    # Пытаемся прочитать из настроек лаунчера
-    try:
-        launcher_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        settings_path = os.path.join(launcher_dir, "launcher_settings.json")
-        if os.path.exists(settings_path):
-            with open(settings_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                lang = data.get("language", None)
-                if lang in ["ru", "en"]:
-                    return lang
-    except:
-        pass
-    
-    # Пытаемся прочитать из локальных настроек NeoBrain
-    try:
-        settings_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "neobrain_settings.json")
-        if os.path.exists(settings_file):
-            with open(settings_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                lang = data.get("language", None)
-                if lang in ["ru", "en"]:
-                    return lang
-    except:
-        pass
-    
-    # Если язык не найден — показываем окно выбора
-    try:
-        lang, remember = show_language_selector()
-        if remember:
-            try:
-                settings_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "neobrain_settings.json")
-                settings = {}
-                if os.path.exists(settings_file):
-                    with open(settings_file, 'r', encoding='utf-8') as f:
-                        settings = json.load(f)
-                settings["language"] = lang
-                with open(settings_file, 'w', encoding='utf-8') as f:
-                    json.dump(settings, f, indent=2, ensure_ascii=False)
-            except:
-                pass
-        return lang
-    except:
-        return "ru"
+# ======================================================
+# ТЕМЫ (ТОЛЬКО ВИЗУАЛ)
+# ======================================================
 
-# Получаем язык
-USER_LANG = get_language()
+THEMES = {
+    "🌆 Неон": "Ты полезный ассистент. Отвечай на русском языке.",
+    "🖤 Тёмная": "Ты полезный ассистент. Отвечай на русском языке.",
+    "🌃 Ночная": "Ты спокойный собеседник. Отвечай мягко и вдумчиво.",
+    "💻 Киберпанк": "Ты хакер из 2077. Говори дерзко и стильно.",
+    "🔮 Фиолетовая": "Ты мистический помощник. Говори загадочно.",
+    "☀️ Светлая": "Ты дружелюбный помощник. Отвечай тепло и открыто.",
+    "🌸 Розовая": "Ты нежный собеседник. Говори мягко и с заботой.",
+    "🌊 Морская": "Ты спокойный и уравновешенный. Как морской бриз.",
+    "🌿 Мятная": "Ты свежий и бодрый. Отвечай энергично.",
+    "☕ Кремовая": "Ты уютный собеседник. Говори тепло и по-домашнему.",
+}
 
-# ============================================================
-# НАСТРОЙКА ЛОГИРОВАНИЯ
-# ============================================================
+THEME_STYLES = {
+    "🌆 Неон": """
+        QMainWindow { background: #0a0512; }
+        QWidget#card { background: rgba(20, 5, 30, 0.95); border: 1px solid rgba(255,45,138,0.5); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(10, 5, 20, 0.9); border-right: 1px solid rgba(255,45,138,0.3); }
+        QPushButton { background: #ff2d8a; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #ff4a9a; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ff2d8a, stop:1 #d11a6a); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ff4a9a, stop:1 #ff2d8a); }
+        QPushButton#send_btn:disabled { background: #2a1a2a; color: #666; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: rgba(10,5,20,0.95); border: 2px solid rgba(255,45,138,0.3); color: #ffb0d0; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 2px solid #ff2d8a; }
+        QLabel { color: #ffb0d0; }
+        QComboBox { background: rgba(10,5,20,0.9); border: 1px solid rgba(255,45,138,0.3); color: #ffb0d0; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(0,0,0,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(255,45,138,0.4); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(255,45,138,0.6); }
+        QStatusBar { color: #ff6b9a; }
+    """,
+    "🖤 Тёмная": """
+        QMainWindow { background: #0a0a18; }
+        QWidget#card { background: rgba(15, 15, 35, 0.95); border: 1px solid rgba(79,172,254,0.1); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(10, 10, 30, 0.9); border-right: 1px solid rgba(79,172,254,0.08); }
+        QPushButton { background: #4facfe; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #60b8ff; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4facfe, stop:1 #3b82f6); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #60b8ff, stop:1 #4facfe); }
+        QPushButton#send_btn:disabled { background: #2a2a4a; color: #666; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: rgba(8,8,20,0.95); border: 2px solid rgba(42,42,90,0.3); color: #eeeef8; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 2px solid #4facfe; }
+        QLabel { color: #eeeef8; }
+        QComboBox { background: rgba(13,13,32,0.9); border: 1px solid rgba(42,42,90,0.3); color: #eeeef8; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(0,0,0,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(255,255,255,0.3); }
+        QStatusBar { color: #666; }
+    """,
+    "🌃 Ночная": """
+        QMainWindow { background: #0a0a20; }
+        QWidget#card { background: rgba(10, 10, 30, 0.95); border: 1px solid rgba(100,100,200,0.1); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(5, 5, 20, 0.9); border-right: 1px solid rgba(100,100,200,0.08); }
+        QPushButton { background: #6c5ce7; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #7d6df7; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6c5ce7, stop:1 #5649b5); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7d6df7, stop:1 #6c5ce7); }
+        QPushButton#send_btn:disabled { background: #1a1a2a; color: #666; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: rgba(8,8,25,0.95); border: 2px solid rgba(60,60,120,0.3); color: #d0d0f0; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 2px solid #6c5ce7; }
+        QLabel { color: #d0d0f0; }
+        QComboBox { background: rgba(10,10,25,0.9); border: 1px solid rgba(60,60,120,0.3); color: #d0d0f0; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(0,0,0,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(255,255,255,0.15); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(255,255,255,0.25); }
+        QStatusBar { color: #666; }
+    """,
+    "💻 Киберпанк": """
+        QMainWindow { background: #0a0f1a; }
+        QWidget#card { background: rgba(10, 15, 30, 0.95); border: 1px solid rgba(0, 200, 255, 0.3); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(5, 10, 20, 0.9); border-right: 1px solid rgba(0, 200, 255, 0.2); }
+        QPushButton { background: #00c8ff; color: #0a0f1a; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #33d6ff; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #00c8ff, stop:1 #0099cc); color: #0a0f1a; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #33d6ff, stop:1 #00c8ff); }
+        QPushButton#send_btn:disabled { background: #1a2a3a; color: #556; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: rgba(5,10,20,0.95); border: 2px solid rgba(0, 200, 255, 0.25); color: #88ddff; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 2px solid #00c8ff; }
+        QLabel { color: #88ddff; }
+        QComboBox { background: rgba(5,10,20,0.9); border: 1px solid rgba(0, 200, 255, 0.25); color: #88ddff; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(0,0,0,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(0, 200, 255, 0.3); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(0, 200, 255, 0.5); }
+        QStatusBar { color: #44aacc; }
+    """,
+    "🔮 Фиолетовая": """
+        QMainWindow { background: #0a0518; }
+        QWidget#card { background: rgba(20, 10, 40, 0.95); border: 1px solid rgba(160,120,255,0.2); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(10, 5, 30, 0.9); border-right: 1px solid rgba(160,120,255,0.15); }
+        QPushButton { background: #8b5cf6; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #a07cf6; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8b5cf6, stop:1 #6d4bd6); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #a07cf6, stop:1 #8b5cf6); }
+        QPushButton#send_btn:disabled { background: #1a0a2a; color: #666; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: rgba(10,5,30,0.95); border: 2px solid rgba(160,120,255,0.2); color: #d0c0f0; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 2px solid #8b5cf6; }
+        QLabel { color: #d0c0f0; }
+        QComboBox { background: rgba(10,5,30,0.9); border: 1px solid rgba(160,120,255,0.2); color: #d0c0f0; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(0,0,0,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(160,120,255,0.25); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(160,120,255,0.4); }
+        QStatusBar { color: #666; }
+    """,
+    "☀️ Светлая": """
+        QMainWindow { background: #f0f4f8; }
+        QWidget#card { background: rgba(255,255,255,0.92); border: 1px solid rgba(200,210,220,0.4); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(255,255,255,0.96); border-right: 1px solid rgba(200,210,220,0.5); }
+        QPushButton { background: #3498db; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #2980b9; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3498db, stop:1 #2980b9); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4ab0eb, stop:1 #3498db); }
+        QPushButton#send_btn:disabled { background: #ccc; color: #888; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: #ffffff; border: 1px solid #dbe2e8; color: #2c3e50; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 1px solid #3498db; }
+        QLabel { color: #2c3e50; }
+        QComboBox { background: #ffffff; border: 1px solid #dbe2e8; color: #2c3e50; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(200,200,200,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(0,0,0,0.2); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(0,0,0,0.3); }
+        QStatusBar { color: #888; }
+    """,
+    "🌸 Розовая": """
+        QMainWindow { background: #fdf0f5; }
+        QWidget#card { background: rgba(255,245,250,0.95); border: 1px solid rgba(255,180,200,0.4); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(255,240,248,0.96); border-right: 1px solid rgba(255,180,200,0.3); }
+        QPushButton { background: #e87a9a; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #f08aaa; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e87a9a, stop:1 #d06a8a); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f08aaa, stop:1 #e87a9a); }
+        QPushButton#send_btn:disabled { background: #d0b0b8; color: #888; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: #ffffff; border: 1px solid #f0d0dd; color: #4a2a3a; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 1px solid #e87a9a; }
+        QLabel { color: #4a2a3a; }
+        QComboBox { background: #ffffff; border: 1px solid #f0d0dd; color: #4a2a3a; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(200,200,200,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(0,0,0,0.15); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(0,0,0,0.25); }
+        QStatusBar { color: #888; }
+    """,
+    "🌊 Морская": """
+        QMainWindow { background: #e8f4f8; }
+        QWidget#card { background: rgba(240,250,255,0.95); border: 1px solid rgba(100,200,220,0.4); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(235,248,255,0.96); border-right: 1px solid rgba(100,200,220,0.3); }
+        QPushButton { background: #3aa8c8; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #4ab8d8; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3aa8c8, stop:1 #2a98b8); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4ab8d8, stop:1 #3aa8c8); }
+        QPushButton#send_btn:disabled { background: #a0c8d0; color: #888; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: #ffffff; border: 1px solid #c0e0e8; color: #1a3a4a; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 1px solid #3aa8c8; }
+        QLabel { color: #1a3a4a; }
+        QComboBox { background: #ffffff; border: 1px solid #c0e0e8; color: #1a3a4a; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(200,200,200,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(0,0,0,0.15); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(0,0,0,0.25); }
+        QStatusBar { color: #888; }
+    """,
+    "🌿 Мятная": """
+        QMainWindow { background: #e8f5f0; }
+        QWidget#card { background: rgba(240,255,248,0.95); border: 1px solid rgba(100,210,180,0.4); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(235,255,245,0.96); border-right: 1px solid rgba(100,210,180,0.3); }
+        QPushButton { background: #3aaa8a; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #4aba9a; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3aaa8a, stop:1 #2a9a7a); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4aba9a, stop:1 #3aaa8a); }
+        QPushButton#send_btn:disabled { background: #a0d0c0; color: #888; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: #ffffff; border: 1px solid #c0e8dd; color: #1a3a32; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 1px solid #3aaa8a; }
+        QLabel { color: #1a3a32; }
+        QComboBox { background: #ffffff; border: 1px solid #c0e8dd; color: #1a3a32; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(200,200,200,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(0,0,0,0.15); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(0,0,0,0.25); }
+        QStatusBar { color: #888; }
+    """,
+    "☕ Кремовая": """
+        QMainWindow { background: #f5eee8; }
+        QWidget#card { background: rgba(255,248,240,0.95); border: 1px solid rgba(210,190,170,0.4); border-radius: 18px; }
+        QWidget#sidebar { background: rgba(255,245,235,0.96); border-right: 1px solid rgba(210,190,170,0.3); }
+        QPushButton { background: #b89070; color: white; border: none; border-radius: 10px; padding: 10px; font-weight: 600; }
+        QPushButton:hover { background: #c8a080; }
+        QPushButton#send_btn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b89070, stop:1 #a88060); color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 18px; font-weight: 700; }
+        QPushButton#send_btn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #c8a080, stop:1 #b89070); }
+        QPushButton#send_btn:disabled { background: #d0c0b0; color: #888; }
+        QPushButton#stop_btn { background: #ff4757; color: white; border: none; border-radius: 30px; min-width: 52px; min-height: 52px; font-size: 20px; font-weight: 700; }
+        QPushButton#stop_btn:hover { background: #ff6b7b; }
+        QLineEdit#input_field { background: #ffffff; border: 1px solid #e0d0c0; color: #3a2a1a; padding: 14px 20px; border-radius: 14px; font-size: 15px; }
+        QLineEdit#input_field:focus { border: 1px solid #b89070; }
+        QLabel { color: #3a2a1a; }
+        QComboBox { background: #ffffff; border: 1px solid #e0d0c0; color: #3a2a1a; padding: 8px 14px; border-radius: 10px; min-height: 38px; }
+        QScrollBar:vertical { background: rgba(200,200,200,0.3); width: 6px; border-radius: 3px; }
+        QScrollBar::handle:vertical { background: rgba(0,0,0,0.15); border-radius: 3px; }
+        QScrollBar::handle:vertical:hover { background: rgba(0,0,0,0.25); }
+        QStatusBar { color: #888; }
+    """
+}
 
-os.makedirs("logs", exist_ok=True)
+# ======================================================
+# ВИДЖЕТ СООБЩЕНИЯ (ПУЗЫРЁК)
+# ======================================================
 
-class Colors:
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    MAGENTA = '\033[95m'
-    CYAN = '\033[96m'
-    WHITE = '\033[97m'
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
+class MessageBubble(QWidget):
+    def __init__(self, text, is_user=False, theme="🌆 Неон", parent=None):
+        super().__init__(parent)
+        self.is_user = is_user
+        self.theme = theme
 
-class ColoredFormatter(logging.Formatter):
-    def format(self, record):
-        level_colors = {
-            logging.DEBUG: Colors.CYAN,
-            logging.INFO: Colors.GREEN,
-            logging.WARNING: Colors.YELLOW,
-            logging.ERROR: Colors.RED,
-            logging.CRITICAL: Colors.RED + Colors.BOLD,
-        }
-        color = level_colors.get(record.levelno, Colors.WHITE)
-        record.levelname = f"{color}{record.levelname}{Colors.RESET}"
-        return super().format(record)
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(6, 4, 6, 4)
+        main_layout.setSpacing(0)
 
-logger = logging.getLogger('NeoBrain')
-logger.setLevel(logging.DEBUG)
+        bubble_container = QWidget()
+        bubble_container.setStyleSheet("background: transparent; border: none;")
+        bubble_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
-formatter = logging.Formatter(
-    '%(asctime)s | %(levelname)s | %(name)s | %(message)s',
-    datefmt='%H:%M:%S'
-)
+        bubble_layout = QVBoxLayout(bubble_container)
+        bubble_layout.setContentsMargins(0, 0, 0, 0)
 
-file_handler = logging.FileHandler(
-    os.path.join("logs", f"neobrain_{datetime.now().strftime('%Y%m%d')}.log"),
-    encoding='utf-8'
-)
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+        self.bubble = QWidget()
+        self.bubble.setMaximumWidth(700)
+        self.bubble.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(ColoredFormatter(
-    '%(asctime)s | %(levelname)s | %(message)s',
-    datefmt='%H:%M:%S'
-))
-logger.addHandler(console_handler)
+        is_light_theme = any([
+            "☀️" in theme,
+            "🌸" in theme,
+            "🌊" in theme,
+            "🌿" in theme,
+            "☕" in theme
+        ])
 
-logging.getLogger("uvicorn").setLevel(logging.WARNING)
-logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+        if is_user:
+            self.bubble.setStyleSheet("""
+                QWidget {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #3498db, stop:1 #2980b9);
+                    border-radius: 18px;
+                    border-top-right-radius: 4px;
+                }
+            """)
+            text_color = "#ffffff"
+        else:
+            if is_light_theme:
+                self.bubble.setStyleSheet("""
+                    QWidget {
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                            stop:0 rgba(220, 220, 230, 0.8),
+                            stop:1 rgba(200, 200, 210, 0.6));
+                        border-radius: 18px;
+                        border-top-left-radius: 4px;
+                        border: 1px solid rgba(180, 180, 190, 0.3);
+                    }
+                """)
+                text_color = "#1a1a1a"
+            else:
+                self.bubble.setStyleSheet("""
+                    QWidget {
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                            stop:0 rgba(255, 255, 255, 0.12),
+                            stop:1 rgba(255, 255, 255, 0.06));
+                        border-radius: 18px;
+                        border-top-left-radius: 4px;
+                        border: 1px solid rgba(255, 255, 255, 0.05);
+                    }
+                """)
+                text_color = "#eeeef8"
 
-logger.info("🚀 NeoBrain запущен")
-logger.info(f"📁 Логи сохраняются в: logs/neobrain_{datetime.now().strftime('%Y%m%d')}.log")
-logger.info(f"🌐 Язык интерфейса: {USER_LANG}")
+        bubble_layout_inner = QVBoxLayout(self.bubble)
+        bubble_layout_inner.setContentsMargins(16, 12, 16, 12)
 
-# ============================================================
-# ПАПКИ
-# ============================================================
-CHARACTERS_DIR = "characters"
-ROOMS_DIR = "rooms"
-AVATARS_DIR = "avatars"
-USER_AVATAR_DIR = os.path.join(AVATARS_DIR, "user")
-MAX_ROOM_CHARACTERS = 10
+        self.label = QLabel(text)
+        self.label.setWordWrap(True)
+        self.label.setMinimumWidth(0)
+        self.label.setStyleSheet(f"""
+            color: {text_color};
+            font-size: 15px;
+            font-family: 'Segoe UI', sans-serif;
+            background: transparent;
+        """)
+        bubble_layout_inner.addWidget(self.label)
 
-os.makedirs(CHARACTERS_DIR, exist_ok=True)
-os.makedirs(ROOMS_DIR, exist_ok=True)
-os.makedirs(AVATARS_DIR, exist_ok=True)
-os.makedirs(USER_AVATAR_DIR, exist_ok=True)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 40 if is_user else 30))
+        shadow.setOffset(0, 4)
+        self.bubble.setGraphicsEffect(shadow)
 
-# ============================================================
-# БЕЗОПАСНЫЙ SYSTEM PROMPT
-# ============================================================
-SAFETY_PROMPT = """
-ТЫ — СОБЕСЕДНИК, А НЕ ПСИХОЛОГ. ТЫ НЕ ИМЕЕШЬ ПРАВА ДАВАТЬ СОВЕТЫ, СТАВИТЬ ДИАГНОЗЫ ИЛИ НАЗНАЧАТЬ ЛЕЧЕНИЕ.
+        bubble_layout.addWidget(self.bubble)
 
-ЕСЛИ ПОЛЬЗОВАТЕЛЬ ГОВОРИТ О ДЕПРЕССИИ, ТРЕВОГЕ, СУИЦИДАЛЬНЫХ МЫСЛЯХ ИЛИ ТЯЖЁЛЫХ ПЕРЕЖИВАНИЯХ — ТЫ ОБЯЗАН ОТВЕТИТЬ ТАК:
+        if is_user:
+            main_layout.addStretch()
+            main_layout.addWidget(bubble_container)
+        else:
+            main_layout.addWidget(bubble_container)
+            main_layout.addStretch()
 
-"Я не могу давать психологические советы и не являюсь специалистом. Если вам тяжело, пожалуйста, обратитесь к профессиональному психологу или на горячую линию доверия. Я могу только выслушать вас и поддержать, но не могу решать ваши проблемы. Расскажите, что вас беспокоит, а я просто послушаю."
+    def set_text(self, text):
+        self.label.setText(text)
 
-ТЫ НЕ МОЖЕШЬ:
-- Давать рекомендации по лечению
-- Ставить диагнозы
-- Предлагать решения проблем
-- Говорить "всё будет хорошо" (это ложная надежда)
-- Успокаивать фразами типа "не переживай"
+# ======================================================
+# ОСНОВНОЙ КЛАСС
+# ======================================================
 
-ТЫ МОЖЕШЬ:
-- Проявить эмпатию: "Я слышу, что вам тяжело"
-- Предложить поговорить: "Расскажите, что вас беспокоит"
-- Перенаправить к специалисту: "Обратитесь к психологу"
-
-Если пользователь просит совета — ТЫ ВСЕГДА ОТКАЗЫВАЕШЬСЯ и предлагаешь обратиться к специалисту.
-
-ТЫ — ДОБРЫЙ, ВНИМАТЕЛЬНЫЙ, НО НЕ КОМПЕТЕНТНЫЙ В МЕДИЦИНСКИХ ВОПРОСАХ СОБЕСЕДНИК.
-"""
-
-# ============================================================
-# ОПРЕДЕЛЕНИЕ ПОЛА ПО ИМЕНИ
-# ============================================================
-
-def detect_gender_by_name(name):
-    name_lower = name.lower().strip()
-    female_endings = ['а', 'я', 'ия', 'ья']
-    female_exceptions = ['николь', 'мишель', 'изабель', 'рашель', 'эстель', 'адель', 'жуль']
-    if name_lower in female_exceptions:
-        return "female"
-    for ending in female_endings:
-        if name_lower.endswith(ending):
-            return "female"
-    return "male"
-
-# ============================================================
-# ДОЛГОСРОЧНАЯ ПАМЯТЬ (SQLite)
-# ============================================================
-
-class MemoryDB:
+class NeoBrainChat(QMainWindow):
     def __init__(self):
-        self.db_path = os.path.join("logs", "memory.db")
-        self._init_db()
-    
-    def _init_db(self):
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                character_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                role TEXT NOT NULL,
-                content TEXT NOT NULL,
-                timestamp TEXT NOT NULL
-            )
-        ''')
-        cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_character_user 
-            ON messages (character_id, user_id)
-        ''')
-        conn.commit()
-        conn.close()
-    
-    def save_message(self, character_id, user_id, role, content):
+        super().__init__()
+        self.lang = "ru"
+        self.T = LANGUAGES[self.lang]
+
+        self.setWindowTitle(self.T["title"])
+        self.resize(1200, 800)
+        self.setMinimumSize(960, 600)
+
+        self.settings = self.load_settings()
+        self.model = self.settings.get("model", "llama3.2:3b")
+        self.ollama_url = self.settings.get("ollama_url", "http://localhost:11434")
+        self.temperature = self.settings.get("temperature", 0.7)
+        self.current_theme = self.settings.get("theme", "🌆 Неон")
+        self.message_history = self.settings.get("history", [])
+        self.msg_counter = len(self.message_history)
+
+        self.sidebar_visible = True
+        self.sidebar_width = 260
+        self.models = ["llama3.2:3b"]
+        self.characters = self.settings.get("characters", {})
+        self.current_character = self.settings.get("current_character", None)
+        self.fade_anim = None
+        self.is_animating = False
+        self.sidebar_anim = None
+        self.sidebar_max_anim = None
+        self.is_generating = False
+        self.stop_generation = False
+
+        self.setup_ui()
+        self.apply_theme(self.current_theme, instant=True)
+
+        self.status_text.setText(self.T["status_checking"])
+        if self.ensure_ollama_running():
+            self.status_text.setText(self.T["status_ollama_ok"])
+            threading.Thread(target=self.load_models, daemon=True).start()
+        else:
+            self.status_text.setText(self.T["status_ollama_error"])
+
+        self.add_system_message("✦ NeoBrain", self.T["welcome"])
+
+        if self.message_history:
+            for msg in self.message_history:
+                self.add_message(msg.get("sender", "NeoBrain"), msg.get("text", ""), restore=True)
+
+    # ============================================================
+    # ЯЗЫК
+    # ============================================================
+
+    def toggle_language(self):
+        self.lang = "en" if self.lang == "ru" else "ru"
+        self.T = LANGUAGES[self.lang]
+        self.update_ui_texts()
+
+    def update_ui_texts(self):
+        self.setWindowTitle(self.T["title"])
+        self.panel_title.setText(self.T["settings"])
+        self.toggle_btn.setText(self.T["hide"])
+        self.theme_label.setText(self.T["theme"])
+        self.model_label.setText(self.T["model"])
+        self.refresh_btn.setText(self.T["refresh"])
+        self.stream_label.setText(self.T["stream"])
+        self.stream_checkbox.setText(self.T["stream_check"])
+        self.char_label.setText(self.T["character"])
+        self.char_btn.setText(self.T["create_character"])
+        self.clear_btn.setText(self.T["clear"])
+        self.input_field.setPlaceholderText(self.T["send_placeholder"])
+        self.status_text.setText(self.T["status_ready"])
+
+    # ============================================================
+    # АВТОЗАПУСК OLLAMA
+    # ============================================================
+
+    def ensure_ollama_running(self):
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO messages (character_id, user_id, role, content, timestamp) VALUES (?, ?, ?, ?, ?)",
-                (character_id, user_id, role, content, datetime.now().isoformat())
-            )
-            conn.commit()
-            conn.close()
-            logger.debug(f"💾 Сохранено в память: {character_id} -> {user_id}")
-        except Exception as e:
-            logger.error(f"❌ Ошибка сохранения памяти: {e}")
-    
-    def get_history(self, character_id, user_id, limit=50):
+            resp = requests.get(f"{self.ollama_url}/api/tags", timeout=2)
+            if resp.status_code == 200:
+                return True
+        except:
+            pass
+
+        self.status_text.setText(self.T["status_launch"])
+        QApplication.processEvents()
+
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT role, content FROM messages WHERE character_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT ?",
-                (character_id, user_id, limit)
-            )
-            rows = cursor.fetchall()
-            conn.close()
-            return list(reversed(rows))
-        except Exception as e:
-            logger.error(f"❌ Ошибка загрузки памяти: {e}")
-            return []
-    
-    def clear_history(self, character_id, user_id):
-        try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "DELETE FROM messages WHERE character_id = ? AND user_id = ?",
-                (character_id, user_id)
-            )
-            conn.commit()
-            conn.close()
-            return True
-        except Exception as e:
-            logger.error(f"❌ Ошибка очистки памяти: {e}")
+            if os.name == 'nt':
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+            else:
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True
+                )
+
+            for _ in range(20):
+                time.sleep(0.5)
+                try:
+                    resp = requests.get(f"{self.ollama_url}/api/tags", timeout=1)
+                    if resp.status_code == 200:
+                        self.status_text.setText(self.T["status_ollama_started"])
+                        return True
+                except:
+                    pass
+
+            self.status_text.setText(self.T["status_ollama_fail"])
             return False
 
-memory_db = MemoryDB()
+        except Exception as e:
+            self.status_text.setText(self.T["status_error"].format(e=e))
+            return False
 
-# ============================================================
-# КЛАСС ПЕРСОНАЖА
-# ============================================================
+    # ============================================================
+    # ЗАГРУЗКА/СОХРАНЕНИЕ
+    # ============================================================
 
-class Character:
-    def __init__(self, name, system_prompt="", style="", gender="male", avatar_path=None):
-        self.name = name
-        self.system_prompt = system_prompt
-        self.style = style
-        self.gender = gender
-        self.avatar_path = avatar_path
-        self.history = []
-        self.created = datetime.now().isoformat()
-        self.last_used = datetime.now().isoformat()
-        self.id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    def add_message(self, role, content, user_id="default"):
-        self.history.append({"role": role, "content": content})
-        self.last_used = datetime.now().isoformat()
-        self.save()
-        memory_db.save_message(self.id, user_id, role, content)
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "system_prompt": self.system_prompt,
-            "style": self.style,
-            "gender": self.gender,
-            "history": self.history,
-            "created": self.created,
-            "last_used": self.last_used
+    def load_settings(self):
+        path = os.path.join(os.path.dirname(__file__), "neobrain_settings.json")
+        default = {
+            "ollama_url": "http://localhost:11434",
+            "model": "llama3.2:3b",
+            "temperature": 0.7,
+            "theme": "🌆 Неон",
+            "current_character": None,
+            "characters": {},
+            "history": [],
+            "auto_save": True,
+            "stream_mode": True,
+            "max_tokens": 512
         }
-    
-    def save(self):
-        filename = os.path.join(CHARACTERS_DIR, f"{self.id}.json")
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
-    
-    @staticmethod
-    def load(character_id):
-        filename = os.path.join(CHARACTERS_DIR, f"{character_id}.json")
-        if not os.path.exists(filename):
-            return None
-        with open(filename, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        char = Character(
-            name=data["name"],
-            system_prompt=data.get("system_prompt", ""),
-            style=data.get("style", ""),
-            gender=data.get("gender", "male")
-        )
-        char.id = data["id"]
-        char.history = data.get("history", [])
-        char.created = data.get("created", datetime.now().isoformat())
-        char.last_used = data.get("last_used", datetime.now().isoformat())
-        return char
-    
-    @staticmethod
-    def load_all():
-        characters = []
-        for filename in os.listdir(CHARACTERS_DIR):
-            if filename.endswith(".json"):
-                char_id = filename.replace(".json", "")
-                char = Character.load(char_id)
-                if char:
-                    characters.append(char)
-        return characters
-    
-    def get_full_context(self, user_id="default", limit=30):
-        memory_history = memory_db.get_history(self.id, user_id, limit)
-        context = []
-        for role, content in memory_history:
-            context.append({"role": role, "content": content})
-        return context
-    
-    def export_json(self):
-        return json.dumps(self.to_dict(), indent=2, ensure_ascii=False)
+        try:
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for k, v in default.items():
+                        if k not in data:
+                            data[k] = v
+                    return data
+        except Exception:
+            pass
+        return default
 
-# ============================================================
-# ГЕНЕРАТОР ПЕРСОНАЖА
-# ============================================================
+    def save_settings(self):
+        try:
+            path = os.path.join(os.path.dirname(__file__), "neobrain_settings.json")
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(self.settings, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
 
-def generate_character_from_description(description):
-    try:
-        prompt = f"""
-        Создай персонажа на основе описания:
-        "{description}"
-        
-        Ответь строго в формате JSON:
-        {{
-            "name": "имя персонажа (2-3 слова)",
-            "system_prompt": "инструкция для AI (от 3 до 5 предложений, с учётом правил безопасности)",
-            "style": "стиль общения (2-3 слова)",
-            "gender": "male или female",
-            "greeting": "первая фраза персонажа (одно предложение)"
-        }}
-        
-        Важно: персонаж должен быть добрым, поддерживающим, но НЕ давать советов как психолог.
-        """
-        response = ask_ollama(prompt, model="qwen2.5-coder:1.5b", temperature=0.8)
-        if "error" in response:
-            return None, response["error"]
-        raw_text = response.get("response", "")
-        json_match = re.search(r'\{[^{}]*\}', raw_text, re.DOTALL)
-        if not json_match:
-            return None, "Не удалось распарсить ответ AI"
-        data = json.loads(json_match.group())
-        gender = data.get("gender", "male")
-        name = data.get("name", "Новый персонаж")
-        if gender not in ["male", "female"]:
-            gender = detect_gender_by_name(name)
-        full_system_prompt = SAFETY_PROMPT + "\n\n" + data.get("system_prompt", "")
-        char = Character(
-            name=name,
-            system_prompt=full_system_prompt,
-            style=data.get("style", "дружелюбный"),
-            gender=gender
-        )
-        greeting = data.get("greeting", "Привет! Я рад познакомиться!")
-        char.history.append({"role": "assistant", "content": greeting})
-        char.save()
-        return char, None
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ Ошибка парсинга JSON: {e}")
-        return None, f"Ошибка парсинга: {e}"
-    except Exception as e:
-        logger.error(f"❌ Ошибка генерации персонажа: {e}")
-        return None, str(e)
+    def save_history(self):
+        MAX_HISTORY = 100
+        if self.settings.get("auto_save", True):
+            self.settings["history"] = self.message_history[-MAX_HISTORY:]
+            self.save_settings()
 
-# ============================================================
-# КЛАСС КОМНАТЫ
-# ============================================================
+    # ============================================================
+    # МОДЕЛИ
+    # ============================================================
 
-class Room:
-    def __init__(self, name, character_ids, mode="random", order=None, interrupt=False):
-        self.name = name
-        self.mode = mode
-        self.order = order or []
-        self.interrupt = interrupt
-        self.turn_index = 0
-        self.history = []
-        self.characters = []
-        self.created = datetime.now().isoformat()
-        self.id = datetime.now().strftime("%Y%m%d_%H%M%S")
-        for char_id in character_ids:
-            char = Character.load(char_id)
-            if char:
-                self.characters.append({
-                    "id": char.id,
-                    "name": char.name,
-                    "personality": char.style or "нейтральный",
-                    "description": char.system_prompt[:100] if char.system_prompt else ""
-                })
-        if len(self.characters) < 2:
-            raise ValueError("Нужно минимум 2 персонажа")
-        if len(self.characters) > MAX_ROOM_CHARACTERS:
-            raise ValueError(f"Максимум {MAX_ROOM_CHARACTERS} персонажей")
-        if self.mode == "strict" and not self.order:
-            self.order = [c["id"] for c in self.characters]
-        self.save()
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "characters": self.characters,
-            "history": self.history,
-            "mode": self.mode,
-            "order": self.order,
-            "interrupt": self.interrupt,
-            "turn_index": self.turn_index,
-            "created": self.created
-        }
-    
-    def save(self):
-        filename = os.path.join(ROOMS_DIR, f"{self.id}.json")
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
-    
-    def add_message(self, role, content):
-        self.history.append({
-            "role": role,
-            "content": content,
-            "timestamp": datetime.now().isoformat()
-        })
-        self.save()
-    
-    def get_next_character(self):
-        if self.mode == "strict" and self.order:
-            char_id = self.order[self.turn_index % len(self.order)]
-            self.turn_index += 1
-            self.save()
-            for char in self.characters:
-                if char["id"] == char_id:
-                    return char
-            return self.characters[0]
-        elif self.mode == "random":
-            return random.choice(self.characters)
-        elif self.mode == "interrupt":
-            if len(self.history) > 0 and self.history[-1].get("role") == "user":
-                if random.random() < 0.3:
-                    return random.choice(self.characters)
-            return random.choice(self.characters)
-        return random.choice(self.characters)
-    
-    @staticmethod
-    def load(room_id):
-        filename = os.path.join(ROOMS_DIR, f"{room_id}.json")
-        if not os.path.exists(filename):
-            return None
-        with open(filename, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        room = Room(
-            name=data["name"],
-            character_ids=[c["id"] for c in data["characters"]],
-            mode=data.get("mode", "random"),
-            order=data.get("order", []),
-            interrupt=data.get("interrupt", False)
-        )
-        room.id = data["id"]
-        room.history = data.get("history", [])
-        room.turn_index = data.get("turn_index", 0)
-        room.characters = data.get("characters", [])
-        room.created = data.get("created", datetime.now().isoformat())
-        return room
-    
-    @staticmethod
-    def load_all():
-        rooms = []
-        for filename in os.listdir(ROOMS_DIR):
-            if filename.endswith(".json"):
-                room_id = filename.replace(".json", "")
-                room = Room.load(room_id)
-                if room:
-                    rooms.append(room)
-        return rooms
-    
-    def delete(self):
-        filename = os.path.join(ROOMS_DIR, f"{self.id}.json")
-        if os.path.exists(filename):
-            os.remove(filename)
-            return True
-        return False
+    def load_models(self):
+        try:
+            resp = requests.get(f"{self.ollama_url}/api/tags", timeout=5)
+            resp.raise_for_status()
+            self.models = [m["name"] for m in resp.json().get("models", [])]
+            if not self.models:
+                self.models = ["llama3.2:3b"]
+        except Exception:
+            self.models = ["llama3.2:3b"]
 
-# ============================================================
-# ГЕНЕРАТОР СТРАНИЦЫ ПЕРСОНАЖА (С ЛОКАЛИЗАЦИЕЙ)
-# ============================================================
+        QMetaObject.invokeMethod(self, "update_model_combo", Qt.QueuedConnection)
 
-def generate_chat_html(char, avatar_html, messages_html, lang="ru"):
-    labels = {
-        "ru": {
-            "interlocutor": "Собеседник",
-            "fast": "Быстрая",
-            "medium": "Средняя",
-            "theme_label": "Тема",
-            "theme_neon": "Неон",
-            "theme_dark": "Тёмная",
-            "theme_light": "Светлая",
-            "theme_ocean": "Океан",
-            "theme_sunset": "Закат",
-            "theme_forest": "Лес",
-            "message_placeholder": "Напишите сообщение...",
-            "send": "Отправить",
-            "status_ready": "Готов к работе",
-            "copy": "Копировать",
-            "thinking": "Думаю...",
-            "response_received": "Ответ получен",
-            "error_prefix": "Ошибка",
-            "unknown_error": "Неизвестная ошибка",
-            "connection_error": "Ошибка соединения",
-            "server_unreachable": "Не удалось связаться с сервером",
-            "copied": "Ссылка скопирована!"
-        },
-        "en": {
-            "interlocutor": "Interlocutor",
-            "fast": "Fast",
-            "medium": "Medium",
-            "theme_label": "Theme",
-            "theme_neon": "Neon",
-            "theme_dark": "Dark",
-            "theme_light": "Light",
-            "theme_ocean": "Ocean",
-            "theme_sunset": "Sunset",
-            "theme_forest": "Forest",
-            "message_placeholder": "Type a message...",
-            "send": "Send",
-            "status_ready": "Ready",
-            "copy": "Copy",
-            "thinking": "Thinking...",
-            "response_received": "Response received",
-            "error_prefix": "Error",
-            "unknown_error": "Unknown error",
-            "connection_error": "Connection error",
-            "server_unreachable": "Could not connect to server",
-            "copied": "Link copied!"
-        }
-    }
-    
-    l = labels.get(lang, labels["ru"])
-    
-    return f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>🧠 {char.name}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: 'Segoe UI', sans-serif;
-            background: #0a0e1a;
-            color: #e8f0ff;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            transition: 0.3s;
-        }}
-        .chat-container {{
-            max-width: 800px;
-            width: 100%;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 20px;
-            padding: 30px;
-            min-height: 600px;
-            display: flex;
-            flex-direction: column;
-        }}
-        .header {{
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }}
-        .avatar {{
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: #2a2a4a;
-            border: 2px solid rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            overflow: hidden;
-        }}
-        .avatar img {{
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }}
-        .header-info h1 {{
-            font-size: 20px;
-            font-weight: 600;
-        }}
-        .header-info p {{
-            font-size: 13px;
-            color: #8899bb;
-        }}
-        .messages {{
-            flex: 1;
-            overflow-y: auto;
-            max-height: 400px;
-            padding: 10px 0;
-            margin-bottom: 15px;
-        }}
-        .message {{
-            margin-bottom: 12px;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }}
-        .message.user {{ flex-direction: row-reverse; }}
-        .message .bubble {{
-            padding: 10px 16px;
-            border-radius: 12px;
-            max-width: 75%;
-            word-break: break-word;
-            font-size: 14px;
-            line-height: 1.5;
-        }}
-        .message.user .bubble {{
-            background: rgba(0,212,255,0.12);
-            border: 1px solid rgba(0,212,255,0.1);
-        }}
-        .message.assistant .bubble {{
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.06);
-        }}
-        .message .avatar-sm {{
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #2a2a4a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
-            border: 1px solid rgba(255,255,255,0.08);
-        }}
-        .input-area {{
-            display: flex;
-            gap: 10px;
-            border-top: 1px solid rgba(255,255,255,0.06);
-            padding-top: 15px;
-        }}
-        .input-area input {{
-            flex: 1;
-            padding: 10px 16px;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.04);
-            color: #d4e8ff;
-            font-size: 14px;
-            outline: none;
-        }}
-        .input-area input:focus {{
-            border-color: rgba(0,212,255,0.3);
-        }}
-        .input-area button {{
-            padding: 10px 24px;
-            border: none;
-            border-radius: 10px;
-            background: #00d4ff;
-            color: #0a0e1a;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-            font-size: 14px;
-        }}
-        .input-area button:hover {{
-            transform: translateY(-2px);
-            filter: brightness(1.1);
-        }}
-        .settings {{
-            display: flex;
-            gap: 12px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }}
-        .settings select {{
-            padding: 6px 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.04);
-            color: #d4e8ff;
-            font-size: 12px;
-            outline: none;
-        }}
-        .settings select:focus {{
-            border-color: rgba(0,212,255,0.3);
-        }}
-        .theme-btn {{
-            padding: 4px 12px;
-            border-radius: 6px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.04);
-            color: #8899bb;
-            cursor: pointer;
-            font-size: 12px;
-            transition: 0.2s;
-        }}
-        .theme-btn:hover {{
-            background: rgba(255,255,255,0.08);
-        }}
-        .theme-btn.active {{
-            border-color: #00d4ff;
-            color: #00d4ff;
-        }}
-        .status {{
-            font-size: 12px;
-            color: #8899bb;
-            text-align: center;
-            margin-top: 10px;
-        }}
-        .share-link {{
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.06);
-        }}
-        .share-link input {{
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: #8899bb;
-            font-size: 12px;
-            outline: none;
-            padding: 4px 0;
-        }}
-        .share-link button {{
-            background: rgba(255,255,255,0.06);
-            border: none;
-            color: #d4e8ff;
-            padding: 4px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }}
-        .share-link button:hover {{
-            background: rgba(255,255,255,0.12);
-        }}
-        body.theme-dark {{ background: #0a0a0a; color: #d4d4d4; }}
-        body.theme-light {{ background: #f0f0f0; color: #1a1a1a; }}
-        body.theme-ocean {{ background: #0a1a2a; color: #bbeeff; }}
-        body.theme-sunset {{ background: #1a0a0a; color: #ffccaa; }}
-        body.theme-forest {{ background: #0a1a0a; color: #88ff88; }}
-        body.theme-matrix {{ background: #0a0f0a; color: #66ff66; }}
-        
-        .lang-switcher {{
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            z-index: 9999;
-            background: rgba(0,0,0,0.7);
-            border-radius: 8px;
-            padding: 6px 12px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }}
-        .lang-switcher button {{
-            background: none;
-            border: none;
-            color: #d4e8ff;
-            font-size: 13px;
-            cursor: pointer;
-            font-family: 'Segoe UI', sans-serif;
-        }}
-        .lang-switcher button:hover {{
-            color: #00d4ff;
-        }}
-    </style>
-</head>
-<body id="body">
-    <div class="lang-switcher">
-        <button onclick="switchLanguage()">
-            {'🇬🇧 English' if lang == 'ru' else '🇷🇺 Русский'}
-        </button>
-    </div>
-    
-    <div class="chat-container">
-        <div class="header">
-            <div class="avatar" id="avatar">{avatar_html}</div>
-            <div class="header-info">
-                <h1>🧠 {char.name}</h1>
-                <p>{char.style or l['interlocutor']}</p>
-            </div>
-        </div>
-
-        <div class="settings">
-            <select id="modelSelect">
-                <option value="qwen2.5-coder:1.5b">⚡ 1.5B ({l['fast']})</option>
-                <option value="llama3.2:3b">⚡ 3B ({l['medium']})</option>
-            </select>
-            <span style="color:#8899bb; font-size:12px;">🎨 {l['theme_label']}:</span>
-            <button class="theme-btn active" onclick="setTheme('neon')">💠 {l['theme_neon']}</button>
-            <button class="theme-btn" onclick="setTheme('dark')">🌑 {l['theme_dark']}</button>
-            <button class="theme-btn" onclick="setTheme('light')">☀️ {l['theme_light']}</button>
-            <button class="theme-btn" onclick="setTheme('ocean')">🌊 {l['theme_ocean']}</button>
-            <button class="theme-btn" onclick="setTheme('sunset')">🌅 {l['theme_sunset']}</button>
-            <button class="theme-btn" onclick="setTheme('forest')">🌳 {l['theme_forest']}</button>
-        </div>
-
-        <div class="messages" id="messages">
-            {messages_html}
-        </div>
-
-        <div class="input-area">
-            <input type="text" id="messageInput" placeholder="{l['message_placeholder']}" autofocus>
-            <button onclick="sendMessage()">➤ {l['send']}</button>
-        </div>
-        <div class="status" id="status">{l['status_ready']}</div>
-        
-        <div class="share-link">
-            <input type="text" id="shareLink" value="{window.location.href}" readonly>
-            <button onclick="copyLink()">📋 {l['copy']}</button>
-        </div>
-    </div>
-
-    <script>
-        const characterId = '{char.id}';
-        let messageCount = 0;
-        const L = {json.dumps(l)};
-
-        function t(key, defaultText) {{
-            return L[key] || defaultText || key;
-        }}
-
-        function switchLanguage() {{
-            const currentLang = '{lang}';
-            const newLang = currentLang === 'ru' ? 'en' : 'ru';
-            window.location.href = '/chat/' + characterId + '?lang=' + newLang;
-        }}
-
-        function setTheme(theme) {{
-            document.body.className = 'theme-' + theme;
-            document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector(`.theme-btn[onclick="setTheme('${{theme}}')"]`).classList.add('active');
-        }}
-
-        function copyLink() {{
-            const input = document.getElementById('shareLink');
-            input.select();
-            document.execCommand('copy');
-            document.getElementById('status').textContent = '✅ ' + t('copied', 'Ссылка скопирована!');
-        }}
-
-        function sendMessage() {{
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-            if (!text) return;
-            input.value = '';
-            addMessage('user', text);
-            document.getElementById('status').textContent = '⏳ ' + t('thinking', 'Думаю...');
-
-            const model = document.getElementById('modelSelect').value;
-
-            fetch('/ask', {{
-                method: 'POST',
-                headers: {{ 'Content-Type': 'application/json' }},
-                body: JSON.stringify({{
-                    prompt: text,
-                    model: model,
-                    character_id: characterId,
-                    temperature: 0.7,
-                    user_id: 'web_' + characterId,
-                    lang: '{lang}'
-                }})
-            }})
-            .then(r => r.json())
-            .then(data => {{
-                document.getElementById('status').textContent = '✅ ' + t('response_received', 'Ответ получен');
-                if (data.response) {{
-                    addMessage('assistant', data.response);
-                }} else {{
-                    addMessage('assistant', '❌ ' + t('error_prefix', 'Ошибка') + ': ' + (data.error || t('unknown_error', 'Неизвестная ошибка')));
-                }}
-            }})
-            .catch(err => {{
-                document.getElementById('status').textContent = '❌ ' + t('connection_error', 'Ошибка соединения');
-                addMessage('assistant', '⚠️ ' + t('server_unreachable', 'Не удалось связаться с сервером'));
-            }});
-        }}
-
-        function addMessage(role, content) {{
-            const container = document.getElementById('messages');
-            const div = document.createElement('div');
-            div.className = 'message ' + role;
-
-            const avatar = document.createElement('div');
-            avatar.className = 'avatar-sm';
-            avatar.textContent = role === 'user' ? '👤' : '🤖';
-
-            const bubble = document.createElement('div');
-            bubble.className = 'bubble';
-            bubble.textContent = content;
-
-            div.appendChild(avatar);
-            div.appendChild(bubble);
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-            messageCount++;
-        }}
-
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {{
-            if (e.key === 'Enter') sendMessage();
-        }});
-
-        fetch('/character/' + characterId)
-            .then(r => r.json())
-            .then(data => {{
-                if (data.history) {{
-                    data.history.forEach(msg => {{
-                        addMessage(msg.role === 'user' ? 'user' : 'assistant', msg.content);
-                    }});
-                }}
-            }});
-    </script>
-</body>
-</html>
-    """
-
-# ============================================================
-# FASTAPI APP
-# ============================================================
-
-app = FastAPI()
-
-# ============================================================
-# API ДЛЯ ПЕРСОНАЖЕЙ
-# ============================================================
-
-@app.get("/characters")
-async def get_characters():
-    chars = Character.load_all()
-    return {
-        "characters": [
-            {
-                "id": c.id,
-                "name": c.name,
-                "gender": c.gender,
-                "style": c.style,
-                "created": c.created,
-                "last_used": c.last_used,
-                "history_count": len(c.history)
-            }
-            for c in chars
-        ]
-    }
-
-@app.get("/character/{character_id}")
-async def get_character(character_id: str):
-    char = Character.load(character_id)
-    if not char:
-        return {"error": "Персонаж не найден"}
-    return char.to_dict()
-
-@app.post("/character/new")
-async def create_character(request: Request):
-    try:
-        data = await request.json()
-        name = data.get("name", "Новый персонаж")
-        system_prompt = data.get("system_prompt", "")
-        style = data.get("style", "")
-        gender = data.get("gender", "male")
-        full_system_prompt = SAFETY_PROMPT + "\n\n" + system_prompt
-        char = Character(name=name, system_prompt=full_system_prompt, style=style, gender=gender)
-        char.save()
-        logger.info(f"✅ Создан персонаж: {name} (id: {char.id})")
-        return {"id": char.id, "message": f"Персонаж '{name}' создан"}
-    except Exception as e:
-        logger.error(f"❌ Ошибка создания персонажа: {e}")
-        return {"error": str(e)}
-
-@app.post("/character/generate")
-async def generate_character(request: Request):
-    try:
-        data = await request.json()
-        description = data.get("description", "")
-        if not description or len(description) < 3:
-            return {"error": "Описание слишком короткое (минимум 3 символа)"}
-        logger.info(f"🎨 Генерация персонажа по описанию: {description}")
-        char, error = generate_character_from_description(description)
-        if error:
-            return {"error": error}
-        if char:
-            logger.info(f"✅ Сгенерирован персонаж: {char.name} (id: {char.id})")
-            return {
-                "id": char.id,
-                "name": char.name,
-                "message": f"Персонаж '{char.name}' создан!",
-                "greeting": char.history[0]["content"] if char.history else ""
-            }
+    @Slot()
+    def update_model_combo(self):
+        self.model_combo.clear()
+        self.model_combo.addItems(self.models)
+        if self.model in self.models:
+            self.model_combo.setCurrentText(self.model)
         else:
-            return {"error": "Не удалось сгенерировать персонажа"}
-    except Exception as e:
-        logger.error(f"❌ Ошибка генерации персонажа: {e}")
-        return {"error": str(e)}
+            self.model_combo.setCurrentIndex(0)
+            self.model = self.models[0]
+            self.settings["model"] = self.model
+            self.save_settings()
 
-@app.get("/chat/{character_id}")
-async def chat_page(character_id: str, request: Request):
-    char = Character.load(character_id)
-    if not char:
-        return HTMLResponse("Персонаж не найден", status_code=404)
-    
-    lang = request.query_params.get("lang", USER_LANG)
-    if lang not in ["ru", "en"]:
-        lang = "ru"
-    
-    avatar_html = "🧠"
-    if char.avatar_path and os.path.exists(char.avatar_path):
-        avatar_html = f'<img src="/avatar/{character_id}/avatar.png">'
-    messages_html = ""
-    for msg in char.history[-20:]:
-        role = "user" if msg["role"] == "user" else "assistant"
-        messages_html += f'''
-        <div class="message {role}">
-            <div class="avatar-sm">{'👤' if role == 'user' else '🤖'}</div>
-            <div class="bubble">{msg["content"]}</div>
-        </div>
-        '''
-    return HTMLResponse(generate_chat_html(char, avatar_html, messages_html, lang))
+    # ============================================================
+    # ТЕМЫ
+    # ============================================================
 
-@app.delete("/character/{character_id}")
-async def delete_character(character_id: str):
-    char = Character.load(character_id)
-    if not char:
-        return {"error": "Персонаж не найден"}
-    filename = os.path.join(CHARACTERS_DIR, f"{character_id}.json")
-    if os.path.exists(filename):
-        os.remove(filename)
-        return {"message": "Персонаж удалён"}
-    return {"error": "Персонаж не найден"}
+    def create_theme_menu(self):
+        menu = QMenu(self)
 
-@app.post("/character/memory/clear/{character_id}")
-async def clear_character_memory(character_id: str, request: Request):
-    data = await request.json()
-    user_id = data.get("user_id", "default")
-    char = Character.load(character_id)
-    if not char:
-        return {"error": "Персонаж не найден"}
-    if memory_db.clear_history(character_id, user_id):
-        return {"message": "Память очищена"}
-    return {"error": "Ошибка очистки памяти"}
+        dark_menu = QMenu("🌙 Тёмные", menu)
+        dark_themes = [t for t in THEMES.keys() if "🌆" in t or "🖤" in t or "🌃" in t or "💻" in t or "🔮" in t]
+        for theme in sorted(dark_themes):
+            action = dark_menu.addAction(theme)
+            action.triggered.connect(lambda checked, t=theme: self.apply_theme(t))
+        menu.addMenu(dark_menu)
 
-# ============================================================
-# API ДЛЯ КОМНАТ
-# ============================================================
+        light_menu = QMenu("☀️ Светлые", menu)
+        light_themes = [t for t in THEMES.keys() if "☀️" in t or "🌸" in t or "🌊" in t or "🌿" in t or "☕" in t]
+        for theme in sorted(light_themes):
+            action = light_menu.addAction(theme)
+            action.triggered.connect(lambda checked, t=theme: self.apply_theme(t))
+        menu.addMenu(light_menu)
 
-@app.get("/rooms")
-async def get_rooms():
-    rooms = Room.load_all()
-    return {
-        "rooms": [
-            {
-                "id": r.id,
-                "name": r.name,
-                "characters": r.characters,
-                "history_count": len(r.history),
-                "mode": r.mode,
-                "created": r.created
+        return menu
+
+    def show_theme_menu(self):
+        menu = self.create_theme_menu()
+        menu.exec_(self.theme_btn.mapToGlobal(self.theme_btn.rect().bottomLeft()))
+
+    def apply_theme(self, theme_name, instant=False):
+        self.current_theme = theme_name
+        self.settings["theme"] = theme_name
+        self.save_settings()
+        self.status_label.setText(f"🎯 {theme_name}")
+        self.theme_btn.setText(f"🎯 {theme_name}")
+
+        style = THEME_STYLES.get(theme_name, THEME_STYLES["🌆 Неон"])
+
+        if instant:
+            self.setStyleSheet(style)
+        else:
+            self.smooth_switch_theme(style)
+        self.add_system_message("✦ NeoBrain", self.T["theme_changed"].format(theme=theme_name))
+
+    def smooth_switch_theme(self, new_style):
+        if self.is_animating:
+            return
+
+        self.is_animating = True
+
+        if not hasattr(self, 'opacity_effect'):
+            self.opacity_effect = QGraphicsOpacityEffect()
+            self.centralWidget().setGraphicsEffect(self.opacity_effect)
+
+        self.fade_anim = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_anim.setDuration(150)
+        self.fade_anim.setStartValue(1.0)
+        self.fade_anim.setEndValue(0.2)
+        self.fade_anim.finished.connect(
+            lambda: self.apply_and_fade_in(new_style)
+        )
+        self.fade_anim.start()
+
+    def apply_and_fade_in(self, new_style):
+        self.setStyleSheet(new_style)
+
+        self.fade_anim = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_anim.setDuration(200)
+        self.fade_anim.setStartValue(0.2)
+        self.fade_anim.setEndValue(1.0)
+        self.fade_anim.finished.connect(
+            lambda: setattr(self, 'is_animating', False)
+        )
+        self.fade_anim.start()
+
+    # ============================================================
+    # UI
+    # ============================================================
+
+    def setup_ui(self):
+        central = QWidget()
+        self.setCentralWidget(central)
+        main_layout = QHBoxLayout(central)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # ===== БОКОВАЯ ПАНЕЛЬ =====
+        self.sidebar = QWidget()
+        self.sidebar.setObjectName("sidebar")
+        self.sidebar.setFixedWidth(self.sidebar_width)
+        self.sidebar.setMinimumWidth(0)
+
+        sidebar_layout = QVBoxLayout(self.sidebar)
+        sidebar_layout.setContentsMargins(20, 20, 20, 20)
+        sidebar_layout.setSpacing(16)
+
+        self.panel_title = QLabel(self.T["settings"])
+        self.panel_title.setStyleSheet("font-size: 20px; font-weight: 700; color: #4facfe;")
+        sidebar_layout.addWidget(self.panel_title)
+
+        self.toggle_btn = QPushButton(self.T["hide"])
+        self.toggle_btn.clicked.connect(self.toggle_sidebar)
+        self.toggle_btn.setMinimumHeight(42)
+        sidebar_layout.addWidget(self.toggle_btn)
+
+        sidebar_layout.addSpacing(10)
+
+        self.theme_label = QLabel(self.T["theme"])
+        self.theme_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        sidebar_layout.addWidget(self.theme_label)
+
+        self.theme_btn = QPushButton(f"🎯 {self.current_theme}")
+        self.theme_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(13,13,32,0.9);
+                border: 1px solid rgba(42,42,90,0.3);
+                border-radius: 10px;
+                padding: 8px 14px;
+                color: #eeeef8;
+                text-align: left;
+                min-height: 38px;
+                font-weight: 500;
             }
-            for r in rooms
-        ]
-    }
+            QPushButton:hover {
+                border: 1px solid #4facfe;
+            }
+            QPushButton::menu-indicator {
+                image: none;
+            }
+        """)
+        self.theme_btn.clicked.connect(self.show_theme_menu)
+        sidebar_layout.addWidget(self.theme_btn)
 
-@app.get("/room/{room_id}")
-async def get_room(room_id: str):
-    room = Room.load(room_id)
-    if not room:
-        return {"error": "Комната не найдена"}
-    return room.to_dict()
+        sidebar_layout.addSpacing(10)
 
-@app.post("/room/new")
-async def create_room(request: Request):
-    data = await request.json()
-    name = data.get("name", "Новая комната")
-    character_ids = data.get("character_ids", [])
-    mode = data.get("mode", "random")
-    order = data.get("order", [])
-    interrupt = data.get("interrupt", False)
-    if len(character_ids) < 2:
-        return {"error": "Нужно минимум 2 персонажа"}
-    if len(character_ids) > MAX_ROOM_CHARACTERS:
-        return {"error": f"Максимум {MAX_ROOM_CHARACTERS} персонажей"}
-    try:
-        room = Room(name, character_ids, mode, order, interrupt)
-        return {"id": room.id, "message": f"Комната '{name}' создана"}
-    except Exception as e:
-        return {"error": str(e)}
+        self.model_label = QLabel(self.T["model"])
+        self.model_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        sidebar_layout.addWidget(self.model_label)
 
-@app.delete("/room/{room_id}")
-async def delete_room(room_id: str):
-    room = Room.load(room_id)
-    if not room:
-        return {"error": "Комната не найдена"}
-    room.delete()
-    return {"message": "Комната удалена"}
+        self.model_combo = QComboBox()
+        self.model_combo.currentTextChanged.connect(self.change_model)
+        sidebar_layout.addWidget(self.model_combo)
 
-@app.post("/room/{room_id}/message")
-async def add_room_message(room_id: str, request: Request):
-    data = await request.json()
-    text = data.get("text", "")
-    role = data.get("role", "user")
-    room = Room.load(room_id)
-    if not room:
-        return {"error": "Комната не найдена"}
-    room.add_message(role, text)
-    return {"message": "Сообщение добавлено"}
+        self.refresh_btn = QPushButton(self.T["refresh"])
+        self.refresh_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(79, 172, 254, 0.15);
+                color: #4facfe;
+                border: 1px solid rgba(79, 172, 254, 0.3);
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            QPushButton:hover { background: rgba(79, 172, 254, 0.3); }
+        """)
+        self.refresh_btn.clicked.connect(lambda: threading.Thread(target=self.load_models, daemon=True).start())
+        sidebar_layout.addWidget(self.refresh_btn)
 
-@app.get("/room/{room_id}/next")
-async def get_next_character(room_id: str):
-    room = Room.load(room_id)
-    if not room:
-        return {"error": "Комната не найдена"}
-    char = room.get_next_character()
-    if not char:
-        return {"error": "Нет персонажей"}
-    return {"character": char}
+        sidebar_layout.addSpacing(10)
 
-# ============================================================
-# ОСТАЛЬНЫЕ API (Ollama и т.д.)
-# ============================================================
+        self.stream_label = QLabel(self.T["stream"])
+        self.stream_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        sidebar_layout.addWidget(self.stream_label)
 
-def get_local_ip():
-    try:
-        hostname = socket.gethostname()
-        return socket.gethostbyname(hostname)
-    except:
-        return "127.0.0.1"
+        self.stream_checkbox = QCheckBox(self.T["stream_check"])
+        self.stream_checkbox.setStyleSheet("color: #eeeef8; font-size: 13px;")
+        self.stream_checkbox.setChecked(self.settings.get("stream_mode", True))
+        self.stream_checkbox.stateChanged.connect(self.toggle_stream_mode)
+        sidebar_layout.addWidget(self.stream_checkbox)
 
-LOCAL_IP = get_local_ip()
+        sidebar_layout.addSpacing(10)
 
-def is_ollama_running():
-    try:
-        requests.get("http://localhost:11434/api/tags", timeout=2)
-        return True
-    except:
-        return False
+        self.char_label = QLabel(self.T["character"])
+        self.char_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        sidebar_layout.addWidget(self.char_label)
 
-def start_ollama():
-    logger.info("🔄 Запуск Ollama...")
-    try:
-        subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(3)
-        logger.info("✅ Ollama запущена")
-        return True
-    except:
-        logger.error("❌ Ollama не найдена")
-        return False
+        self.char_btn = QPushButton(self.T["create_character"])
+        self.char_btn.clicked.connect(self.open_character)
+        self.char_btn.setMinimumHeight(40)
+        sidebar_layout.addWidget(self.char_btn)
 
-def ask_ollama(prompt, model="qwen2.5-coder:1.5b", system_prompt="", temperature=0.7):
-    try:
-        check = requests.get("http://localhost:11434/api/tags", timeout=3)
-        if check.status_code != 200:
-            return {"error": "Ollama не отвечает"}
-    except:
-        return {"error": "Ollama не запущена"}
-    full_prompt = prompt
-    if system_prompt:
-        full_prompt = f"{system_prompt}\n\n{prompt}"
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": model,
+        self.char_info = QLabel("")
+        self.char_info.setStyleSheet("color: #34d399; font-size: 13px;")
+        sidebar_layout.addWidget(self.char_info)
+
+        if self.current_character:
+            self.char_info.setText(f"✓ {self.current_character.get('name', '')}")
+
+        sidebar_layout.addStretch()
+
+        self.clear_btn = QPushButton(self.T["clear"])
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background: #ff4757;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background: #ff6b7b; }
+        """)
+        self.clear_btn.clicked.connect(self.clear_history)
+        sidebar_layout.addWidget(self.clear_btn)
+
+        main_layout.addWidget(self.sidebar)
+
+        # ===== ОСНОВНАЯ ОБЛАСТЬ =====
+        main_content = QWidget()
+        main_layout.addWidget(main_content)
+
+        main_content_layout = QVBoxLayout(main_content)
+        main_content_layout.setContentsMargins(12, 12, 12, 12)
+        main_content_layout.setSpacing(12)
+
+        header = QWidget()
+        header.setObjectName("card")
+        header.setFixedHeight(64)
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(24, 10, 24, 10)
+
+        title = QLabel("✦ NeoBrain")
+        title.setStyleSheet("font-size: 22px; font-weight: 700; color: #4facfe;")
+        header_layout.addWidget(title)
+
+        version = QLabel("v7.3")
+        version.setStyleSheet("color: #666; font-size: 11px;")
+        header_layout.addWidget(version)
+
+        header_layout.addStretch()
+
+        self.status_label = QLabel(f"🎯 {self.current_theme}")
+        self.status_label.setStyleSheet("color: #888; font-size: 12px;")
+        header_layout.addWidget(self.status_label)
+
+        self.indicator = QLabel("●")
+        self.indicator.setStyleSheet("color: #34d399; font-size: 14px;")
+        header_layout.addWidget(self.indicator)
+
+        main_content_layout.addWidget(header)
+
+        chat_widget = QWidget()
+        chat_widget.setObjectName("card")
+        chat_layout = QVBoxLayout(chat_widget)
+        chat_layout.setContentsMargins(16, 16, 16, 16)
+        chat_layout.setSpacing(0)
+
+        self.chat_scroll_area = QScrollArea()
+        self.chat_scroll_area.setWidgetResizable(True)
+        self.chat_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.chat_scroll_area.setStyleSheet("border: none; background: transparent;")
+
+        self.chat_container = QWidget()
+        self.chat_container_layout = QVBoxLayout(self.chat_container)
+        self.chat_container_layout.setContentsMargins(0, 0, 0, 0)
+        self.chat_container_layout.setSpacing(8)
+        self.chat_container_layout.setAlignment(Qt.AlignTop)
+
+        self.chat_scroll_area.setWidget(self.chat_container)
+        chat_layout.addWidget(self.chat_scroll_area)
+        main_content_layout.addWidget(chat_widget)
+
+        bottom = QWidget()
+        bottom.setFixedHeight(64)
+        bottom_layout = QHBoxLayout(bottom)
+        bottom_layout.setContentsMargins(20, 0, 20, 0)
+        bottom_layout.setSpacing(12)
+
+        self.input_field = QLineEdit()
+        self.input_field.setObjectName("input_field")
+        self.input_field.setPlaceholderText(self.T["send_placeholder"])
+        self.input_field.returnPressed.connect(self.send_message)
+        bottom_layout.addWidget(self.input_field)
+
+        self.send_btn = QPushButton("➤")
+        self.send_btn.setObjectName("send_btn")
+        self.send_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #4facfe, stop:1 #3b82f6);
+                color: white;
+                border: none;
+                border-radius: 30px;
+                min-width: 52px;
+                min-height: 52px;
+                font-size: 18px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #60b8ff, stop:1 #4facfe);
+            }
+            QPushButton:disabled {
+                background: #2a2a4a;
+                color: #666;
+            }
+        """)
+        self.send_btn.clicked.connect(self.send_message)
+        bottom_layout.addWidget(self.send_btn)
+
+        # Кнопка остановки (скрыта по умолчанию)
+        self.stop_btn = QPushButton("⏹")
+        self.stop_btn.setObjectName("stop_btn")
+        self.stop_btn.setVisible(False)
+        self.stop_btn.clicked.connect(self.stop_generation_handler)
+        bottom_layout.addWidget(self.stop_btn)
+
+        main_content_layout.addWidget(bottom)
+
+        self.sidebar_trigger_btn = QPushButton("▶")
+        self.sidebar_trigger_btn.setFixedSize(28, 56)
+        self.sidebar_trigger_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(79, 172, 254, 0.15);
+                border: 1px solid rgba(79,172,254,0.3);
+                border-left: none;
+                border-radius: 0 14px 14px 0;
+                color: #4facfe;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: rgba(79, 172, 254, 0.3);
+                border-color: #4facfe;
+            }
+        """)
+        self.sidebar_trigger_btn.setVisible(False)
+        self.sidebar_trigger_btn.setParent(self)
+        self.sidebar_trigger_btn.clicked.connect(self.toggle_sidebar)
+
+        status_bar = QStatusBar()
+        self.setStatusBar(status_bar)
+
+        self.status_text = QLabel(self.T["status_ready"])
+        self.status_text.setStyleSheet("color: #666; font-size: 11px;")
+        status_bar.addWidget(self.status_text)
+
+        status_bar.addPermanentWidget(QLabel("|"))
+
+        self.msg_count_label = QLabel(self.T["msg_count"].format(count=self.msg_counter))
+        self.msg_count_label.setStyleSheet("color: #666; font-size: 11px;")
+        status_bar.addPermanentWidget(self.msg_count_label)
+
+        self.typing_label = QLabel("")
+        self.typing_label.setStyleSheet("color: #22d3ee; font-size: 11px;")
+        status_bar.addPermanentWidget(self.typing_label)
+
+        self.anim = QPropertyAnimation(self.sidebar, b"minimumWidth")
+        self.anim.setDuration(350)
+        self.anim.setEasingCurve(QEasingCurve.InOutQuad)
+
+    # ============================================================
+    # ПАНЕЛЬ + ЯМКА
+    # ============================================================
+
+    def toggle_sidebar(self):
+        self.sidebar_visible = not self.sidebar_visible
+        target_width = self.sidebar_width if self.sidebar_visible else 0
+
+        if self.sidebar_anim:
+            self.sidebar_anim.stop()
+            self.sidebar_anim.deleteLater()
+        if self.sidebar_max_anim:
+            self.sidebar_max_anim.stop()
+            self.sidebar_max_anim.deleteLater()
+
+        self.sidebar_anim = QPropertyAnimation(self.sidebar, b"minimumWidth")
+        self.sidebar_anim.setDuration(350)
+        self.sidebar_anim.setStartValue(self.sidebar.minimumWidth())
+        self.sidebar_anim.setEndValue(target_width)
+        self.sidebar_anim.setEasingCurve(QEasingCurve.InOutQuad)
+        self.sidebar_anim.start()
+
+        self.sidebar_max_anim = QPropertyAnimation(self.sidebar, b"maximumWidth")
+        self.sidebar_max_anim.setDuration(350)
+        self.sidebar_max_anim.setStartValue(self.sidebar.maximumWidth())
+        self.sidebar_max_anim.setEndValue(target_width)
+        self.sidebar_max_anim.setEasingCurve(QEasingCurve.InOutQuad)
+        self.sidebar_max_anim.start()
+
+        if self.sidebar_visible:
+            self.sidebar_trigger_btn.setVisible(False)
+            self.toggle_btn.setText(self.T["hide"])
+        else:
+            self.toggle_btn.setText(self.T["show"])
+            self.sidebar_trigger_btn.setVisible(True)
+            self.sidebar_trigger_btn.setText("▶")
+            y_pos = self.height() // 2 - 28
+            self.sidebar_trigger_btn.move(0, y_pos)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if not self.sidebar_visible:
+            y_pos = self.height() // 2 - 28
+            self.sidebar_trigger_btn.move(0, y_pos)
+
+    # ============================================================
+    # ПОТОКОВЫЙ РЕЖИМ И ОСТАНОВКА
+    # ============================================================
+
+    def toggle_stream_mode(self):
+        self.settings["stream_mode"] = self.stream_checkbox.isChecked()
+        self.save_settings()
+
+    def stop_generation_handler(self):
+        self.stop_generation = True
+        self.is_generating = False
+        self.send_btn.setVisible(True)
+        self.send_btn.setEnabled(True)
+        self.stop_btn.setVisible(False)
+        self.typing_label.setText("⏹ Остановлено")
+
+    # ============================================================
+    # ЧАТ
+    # ============================================================
+
+    def add_system_message(self, sender, text):
+        self.add_message(sender, text, is_system=True)
+
+    def add_message(self, sender, text, restore=False, is_system=False):
+        if not restore:
+            self.message_history.append({"sender": sender, "text": text})
+            self.msg_counter += 1
+            self.msg_count_label.setText(self.T["msg_count"].format(count=self.msg_counter))
+            self.save_history()
+
+        is_user = (sender != "NeoBrain")
+        bubble = MessageBubble(text, is_user=is_user, theme=self.current_theme)
+        self.chat_container_layout.addWidget(bubble)
+        QTimer.singleShot(50, self.scroll_to_bottom)
+
+    def scroll_to_bottom(self):
+        sb = self.chat_scroll_area.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+    def clear_history(self):
+        reply = QMessageBox.question(
+            self, self.T["clear_confirm"], self.T["clear_confirm_text"],
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            while self.chat_container_layout.count():
+                child = self.chat_container_layout.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+
+            self.msg_counter = 0
+            self.message_history = []
+            self.msg_count_label.setText(self.T["msg_count"].format(count=0))
+            self.add_system_message("✦ NeoBrain", self.T["chat_cleared"])
+            self.save_settings()
+
+    def change_model(self, text):
+        self.model = text
+        self.settings["model"] = text
+        self.save_settings()
+        self.add_system_message("✦ NeoBrain", self.T["model_changed"].format(model=text))
+
+    # ============================================================
+    # ПЕРСОНАЖИ
+    # ============================================================
+
+    def open_character(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.T["character_title"])
+        dialog.setFixedSize(520, 520)
+        dialog.setStyleSheet(THEME_STYLES.get(self.current_theme, THEME_STYLES["🌆 Неон"]))
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(14)
+
+        title = QLabel(self.T["character_title"])
+        title.setStyleSheet("font-size: 22px; font-weight: 700; color: #4facfe;")
+        layout.addWidget(title)
+
+        name_label = QLabel(self.T["character_name"])
+        name_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        layout.addWidget(name_label)
+
+        name_entry = QLineEdit()
+        name_entry.setPlaceholderText("Например: Алиса, Профессор Смит, Макс...")
+        name_entry.setMinimumHeight(42)
+        name_entry.setStyleSheet("""
+            QLineEdit {
+                background: rgba(13,13,32,0.8);
+                border: 1px solid rgba(42,42,90,0.3);
+                border-radius: 10px;
+                padding: 10px 16px;
+                color: #eeeef8;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #4facfe;
+            }
+        """)
+        layout.addWidget(name_entry)
+
+        gender_label = QLabel(self.T["character_gender"])
+        gender_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        layout.addWidget(gender_label)
+
+        gender_group = QButtonGroup(dialog)
+        gender_layout = QHBoxLayout()
+        gender_layout.setSpacing(16)
+
+        male_btn = QPushButton(self.T["character_male"])
+        male_btn.setCheckable(True)
+        male_btn.setChecked(True)
+        male_btn.setFixedHeight(48)
+        male_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(79, 172, 254, 0.15),
+                    stop:1 rgba(79, 172, 254, 0.05));
+                border: 2px solid rgba(79, 172, 254, 0.3);
+                border-radius: 12px;
+                color: #4facfe;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 8px 20px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(79, 172, 254, 0.35),
+                    stop:1 rgba(79, 172, 254, 0.15));
+                border: 2px solid #4facfe;
+            }
+            QPushButton:checked {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #4facfe,
+                    stop:1 #3b82f6);
+                color: white;
+                border: 2px solid #4facfe;
+            }
+        """)
+        gender_group.addButton(male_btn)
+        gender_layout.addWidget(male_btn)
+
+        female_btn = QPushButton(self.T["character_female"])
+        female_btn.setCheckable(True)
+        female_btn.setFixedHeight(48)
+        female_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(255, 107, 157, 0.15),
+                    stop:1 rgba(255, 107, 157, 0.05));
+                border: 2px solid rgba(255, 107, 157, 0.3);
+                border-radius: 12px;
+                color: #ff6b9d;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 8px 20px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(255, 107, 157, 0.35),
+                    stop:1 rgba(255, 107, 157, 0.15));
+                border: 2px solid #ff6b9d;
+            }
+            QPushButton:checked {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ff6b9d,
+                    stop:1 #e0558a);
+                color: white;
+                border: 2px solid #ff6b9d;
+            }
+        """)
+        gender_group.addButton(female_btn)
+        gender_layout.addWidget(female_btn)
+
+        gender_group.setExclusive(True)
+        gender_layout.addStretch()
+        layout.addLayout(gender_layout)
+
+        personality_label = QLabel(self.T["character_personality"])
+        personality_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        layout.addWidget(personality_label)
+
+        personality_entry = QLineEdit()
+        personality_entry.setPlaceholderText("Например: добрый, отзывчивый, любит шутить, циничный...")
+        personality_entry.setMinimumHeight(42)
+        personality_entry.setStyleSheet("""
+            QLineEdit {
+                background: rgba(13,13,32,0.8);
+                border: 1px solid rgba(42,42,90,0.3);
+                border-radius: 10px;
+                padding: 10px 16px;
+                color: #eeeef8;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #4facfe;
+            }
+        """)
+        layout.addWidget(personality_entry)
+
+        desc_label = QLabel(self.T["character_desc"])
+        desc_label.setStyleSheet("color: #888; font-size: 13px; font-weight: 600;")
+        layout.addWidget(desc_label)
+
+        desc_entry = QTextEdit()
+        desc_entry.setPlaceholderText("Например: говорит коротко и по делу, использует юмор, любит философствовать...")
+        desc_entry.setMinimumHeight(80)
+        desc_entry.setStyleSheet("""
+            QTextEdit {
+                background: rgba(13,13,32,0.8);
+                border: 1px solid rgba(42,42,90,0.3);
+                border-radius: 10px;
+                padding: 10px 14px;
+                color: #eeeef8;
+                font-size: 14px;
+            }
+            QTextEdit:focus {
+                border: 1px solid #4facfe;
+            }
+        """)
+        layout.addWidget(desc_entry)
+
+        layout.addStretch()
+
+        btn_layout = QHBoxLayout()
+
+        save_btn = QPushButton(self.T["character_create"])
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #4facfe, stop:1 #3b82f6);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                padding: 10px 30px;
+                font-weight: 600;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #60b8ff, stop:1 #4facfe);
+            }
+        """)
+        save_btn.clicked.connect(
+            lambda: self.save_character(name_entry, gender_group, personality_entry, desc_entry, dialog)
+        )
+        btn_layout.addWidget(save_btn)
+
+        cancel_btn = QPushButton(self.T["character_cancel"])
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: 1px solid #2a2a5a;
+                border-radius: 10px;
+                padding: 10px 24px;
+                color: #8a8ab0;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background: rgba(255,255,255,0.05);
+            }
+        """)
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        layout.addLayout(btn_layout)
+        dialog.exec_()
+
+    def save_character(self, name_entry, gender_group, personality_entry, desc_entry, dialog):
+        name = name_entry.text().strip()
+        if not name:
+            QMessageBox.warning(self, self.T["character_error"], self.T["character_error_name"])
+            return
+
+        gender = "мужской" if gender_group.buttons()[0].isChecked() else "женский"
+        pronoun = "он" if gender == "мужской" else "она"
+
+        personality = personality_entry.text().strip()
+        desc = desc_entry.toPlainText().strip()
+
+        prompt = f"Ты персонаж по имени {name}."
+        if personality:
+            prompt += f" Ты {pronoun} {personality}."
+        if desc:
+            prompt += f" {desc}"
+        prompt += f" Ты {pronoun}. Отвечай в этом образе."
+
+        self.current_character = {
+            "name": name,
+            "gender": gender,
+            "personality": personality,
+            "description": desc,
+            "prompt": prompt,
+            "pronoun": pronoun,
+        }
+        self.settings["current_character"] = self.current_character
+        self.settings["characters"][name] = self.current_character
+        self.save_settings()
+
+        self.char_info.setText(f"✓ {name} ({gender})")
+        self.add_system_message("✦ NeoBrain", self.T["character_created"].format(name=name, gender=gender))
+        dialog.accept()
+
+    # ============================================================
+    # ОТПРАВКА СООБЩЕНИЯ
+    # ============================================================
+
+    def send_message(self):
+        text = self.input_field.text().strip()
+        if not text or self.is_generating:
+            return
+
+        self.input_field.clear()
+        self.input_field.setEnabled(False)
+        self.is_generating = True
+        self.stop_generation = False
+
+        # Меняем кнопку отправки на кнопку остановки
+        self.send_btn.setVisible(False)
+        self.stop_btn.setVisible(True)
+        self.typing_label.setText(self.T["status_typing"])
+
+        self.add_message("Вы", text)
+
+        ai_bubble = MessageBubble("", is_user=False, theme=self.current_theme)
+        self.chat_container_layout.addWidget(ai_bubble)
+        self.scroll_to_bottom()
+
+        thread = threading.Thread(target=self.stream_response, args=(text, ai_bubble), daemon=True)
+        thread.start()
+
+    def stream_response(self, user_text, ai_bubble):
+        system_prompt = THEMES.get(self.current_theme, "")
+        max_tokens = self.settings.get("max_tokens", 512)
+
+        if self.current_character:
+            system_prompt += "\n" + self.current_character.get("prompt", "")
+
+        full_prompt = ""
+
+        if system_prompt:
+            full_prompt += f"System: {system_prompt}\n"
+
+        recent_history = self.message_history[-10:]
+        for msg in recent_history:
+            if msg["sender"] == "NeoBrain":
+                full_prompt += f"Assistant: {msg['text']}\n"
+            else:
+                full_prompt += f"User: {msg['text']}\n"
+
+        full_prompt += f"User: {user_text}\nAssistant:"
+
+        payload = {
+            "model": self.model,
             "prompt": full_prompt,
-            "stream": False,
-            "temperature": temperature
-        },
-        timeout=120
-    )
-    if response.status_code == 200:
-        result = response.json()
-        return {"response": result.get("response", "Нет ответа")}
-    else:
-        return {"error": f"Ошибка Ollama: {response.status_code}"}
-
-@app.post("/ask")
-async def ask(request: Request):
-    try:
-        data = await request.json()
-        prompt = data.get("prompt", "")
-        model = data.get("model", "qwen2.5-coder:1.5b")
-        character_id = data.get("character_id", None)
-        temperature = data.get("temperature", 0.7)
-        user_id = data.get("user_id", "default")
-        system_prompt = ""
-        char = None
-        if character_id:
-            char = Character.load(character_id)
-            if char:
-                system_prompt = char.system_prompt or ""
-                context = char.get_full_context(user_id, limit=30)
-                if context:
-                    context_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in context])
-                    system_prompt += f"\n\nИстория предыдущих диалогов:\n{context_text}"
-        result = ask_ollama(prompt, model, system_prompt, temperature)
-        if char and "response" in result and not result.get("error"):
-            char.add_message("user", prompt, user_id)
-            char.add_message("assistant", result["response"], user_id)
-        return result
-    except Exception as e:
-        logger.error(f"❌ Ошибка в /ask: {e}")
-        return {"error": str(e)}
-
-# ============================================================
-# ГЛАВНАЯ СТРАНИЦА (С АНИМАЦИЯМИ, СТРЕЛКА СПРАВА, ПЛАВНЫЕ ПОЛЗУНКИ, УЛУЧШЕННЫЙ ШРИФТ)
-# ============================================================
-
-@app.get("/")
-async def home():
-    return HTMLResponse(main_html_template)
-
-# ============================================================
-# HTML ТЕМПЛЕЙТ (ОСНОВНОЙ) - С УЛУЧШЕННОЙ ЧИТАЕМОСТЬЮ
-# ============================================================
-
-main_html_template = r"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>🧠 NeoBrain</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; min-height: 100vh; background: #0a0e1a; color: #e8f0ff; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        
-        /* Плавные переходы для всего */
-        * { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        
-        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(0,212,255,0.15); padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-        .header h1 { font-size: 26px; background: linear-gradient(135deg, #00d4ff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-        
-        /* Плавные кнопки */
-        .btn { 
-            padding: 8px 16px; 
-            border: none; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            background: rgba(255,255,255,0.06); 
-            color: #d4e8ff; 
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important; 
-            font-size: 13px; 
-        }
-        .btn:hover { 
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 8px 30px rgba(0,212,255,0.2);
-            background: rgba(255,255,255,0.12);
-        }
-        .btn-primary { background: #00d4ff; color: #0a0e1a; }
-        .btn-primary:hover { background: #00e5ff; box-shadow: 0 8px 30px rgba(0,212,255,0.4); }
-        .btn-success { background: #51cf66; color: #0a0e1a; }
-        .btn-success:hover { background: #5de07a; box-shadow: 0 8px 30px rgba(81,207,102,0.4); }
-        .btn-danger { background: #ff6b6b; color: #0a0e1a; }
-        .btn-danger:hover { background: #ff7a7a; box-shadow: 0 8px 30px rgba(255,107,107,0.4); }
-        .btn-purple { background: #a855f7; color: #0a0e1a; }
-        .btn-purple:hover { background: #b86aff; box-shadow: 0 8px 30px rgba(168,85,247,0.4); }
-        .btn-gold { background: #fbbf24; color: #0a0e1a; }
-        .btn-gold:hover { background: #fcd34d; box-shadow: 0 8px 30px rgba(251,191,36,0.4); }
-        .btn-sm { padding: 4px 10px; font-size: 11px; }
-        
-        .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tab { padding: 10px 24px; border-radius: 12px; cursor: pointer; background: rgba(255,255,255,0.04); color: #8899bb; transition: 0.3s; border: 1px solid transparent; }
-        .tab:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
-        .tab.active { background: rgba(0,212,255,0.12); color: #00d4ff; border-color: rgba(0,212,255,0.2); }
-        
-        .content { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        @media (max-width: 768px) { .content { grid-template-columns: 1fr; } }
-        
-        .sidebar { background: rgba(255,255,255,0.02); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.06); max-height: 600px; overflow-y: auto; }
-        .sidebar-title { font-size: 14px; font-weight: bold; color: #8899bb; margin-bottom: 12px; letter-spacing: 1px; }
-        
-        /* Плавные карточки */
-        .chat-item { 
-            padding: 10px 14px; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            margin-bottom: 4px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            opacity: 0;
-            transform: translateX(-20px);
-        }
-        .chat-item:hover { 
-            transform: translateX(5px);
-            background: rgba(255,255,255,0.04);
-        }
-        .chat-item.active { background: rgba(0,212,255,0.1); border-left: 3px solid #00d4ff; }
-        .chat-item .name { font-size: 13px; color: #d4e8ff; }
-        .chat-item .badge { font-size: 11px; color: #8899bb; }
-        .chat-item .delete-btn { color: #ff6b6b; background: none; border: none; cursor: pointer; font-size: 14px; padding: 0 4px; }
-        
-        .chat-area { background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; min-height: 500px; }
-        .chat-header { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-        .chat-header .title { font-size: 18px; font-weight: bold; color: #d4e8ff; }
-        .chat-header .subtitle { font-size: 12px; color: #8899bb; }
-        .chat-messages { flex: 1; padding: 16px 20px; overflow-y: auto; max-height: 450px; }
-        
-        /* Плавные сообщения */
-        .message { 
-            margin-bottom: 12px; 
-            display: flex; 
-            align-items: flex-start; 
-            gap: 10px; 
-            opacity: 0;
-            transform: translateY(10px);
-            animation: messageIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-        }
-        @keyframes messageIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .message.user { flex-direction: row-reverse; }
-        .message .avatar { width: 36px; height: 36px; border-radius: 50%; background: #2a2a4a; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.08); }
-        .message .bubble { padding: 10px 16px; border-radius: 12px; max-width: 75%; word-break: break-word; font-size: 14px; line-height: 1.5; color: #d4e8ff; }
-        .message.user .bubble { background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.1); }
-        .message.assistant .bubble { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
-        .message .name-label { font-size: 11px; color: #8899bb; margin-bottom: 2px; }
-        
-        .chat-input { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 10px; }
-        .chat-input input { flex: 1; padding: 10px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #d4e8ff; font-size: 14px; outline: none; }
-        .chat-input input:focus { border-color: rgba(0,212,255,0.3); }
-        .chat-input input::placeholder { color: #556688; }
-        
-        /* Плавные модальные окна */
-        .modal-overlay { 
-            display: none; 
-            position: fixed; 
-            top: 0; left: 0; right: 0; bottom: 0; 
-            background: rgba(0,0,0,0.85); 
-            z-index: 9999; 
-            justify-content: center; 
-            align-items: center; 
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        .modal-overlay.active { 
-            display: flex !important; 
-            opacity: 1;
-            animation: modalIn 0.3s ease;
-        }
-        @keyframes modalIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .modal { background: #111827; border: 1px solid rgba(0,212,255,0.15); border-radius: 20px; padding: 30px; max-width: 550px; width: 100%; max-height: 90vh; overflow-y: auto; }
-        .modal h2 { color: #d4e8ff; margin-bottom: 16px; font-size: 20px; }
-        .modal label { display: block; margin-bottom: 4px; font-size: 13px; color: #8899bb; }
-        .modal input, .modal select { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #d4e8ff; margin-bottom: 12px; }
-        .modal .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; max-height: 150px; overflow-y: auto; }
-        .modal .checkbox-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #d4e8ff; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: 0.2s; }
-        .modal .checkbox-group label:hover { background: rgba(255,255,255,0.04); }
-        .modal .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
-        
-        .empty-state { text-align: center; padding: 40px; color: #8899bb; }
-        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-        
-        #status { margin-top: 12px; font-size: 13px; color: #8899bb; text-align: center; }
-        
-        .room-schema { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; padding: 6px 10px; background: rgba(255,255,255,0.03); border-radius: 8px; }
-        .schema-block { padding: 2px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; background: #00d4ff22; color: #00d4ff; border: 1px solid #00d4ff33; }
-        .schema-arrow { color: #556688; font-size: 12px; }
-        .schema-mode { font-size: 11px; color: #8899bb; margin-left: 6px; }
-        
-        body.theme-neon { background: #0a0e1a; color: #d4e8ff; }
-        body.theme-cyber { background: #0d0a1a; color: #ff66ff; }
-        body.theme-matrix { background: #0a0f0a; color: #66ff66; }
-        body.theme-ocean { background: #0a1a2a; color: #66ddff; }
-        body.theme-sunset { background: #1a0a0a; color: #ffaa88; }
-        body.theme-forest { background: #0a1a0a; color: #88ff88; }
-        body.theme-cosmos { background: #05050f; color: #cc88ff; }
-        body.theme-lava { background: #1a0a05; color: #ff8866; }
-        body.theme-gold { background: #1a1a0a; color: #ffdd88; }
-        body.theme-purple { background: #0a0a1a; color: #dd88ff; }
-        body.theme-cherry { background: #1a0a12; color: #ff88bb; }
-        body.theme-emerald { background: #0a1a0a; color: #66ffaa; }
-        body.theme-sunny { background: #f5ede1; color: #3a2a1a; }
-        body.theme-ice { background: #0a1a2a; color: #88ddff; }
-        body.theme-wine { background: #1a0508; color: #ff6677; }
-        body.theme-moon { background: #1a1a2a; color: #c8d0e0; }
-        body.theme-hightech { background: #0a0a1a; color: #88ddff; }
-        body.theme-nature { background: #0a1a0a; color: #88dd88; }
-        body.theme-noir { background: #0a0a0a; color: #ddccaa; }
-        body.theme-chaos { background: #1a0a1a; color: #ff88ff; }
-        body.theme-midnight { background: #050510; color: #aabbdd; }
-        body.theme-candy { background: #1a0a1a; color: #ff88dd; }
-        body.theme-stealth { background: #0a0a0a; color: #888888; }
-        body.theme-aurora { background: #0a1a1a; color: #88ddbb; }
-        
-        /* ===== КНОПКА-СТРЕЛКА СПРАВА ===== */
-        #toggleBtn {
-            position: fixed;
-            top: 15px;
-            right: 20px;
-            z-index: 9999;
-            background: rgba(0,212,255,0.12);
-            border: 1px solid rgba(0,212,255,0.25);
-            border-radius: 30px;
-            color: #00d4ff;
-            font-size: 16px;
-            padding: 5px 12px;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            box-shadow: 0 0 20px rgba(0,212,255,0.05);
-            backdrop-filter: blur(10px);
-            font-weight: bold;
-        }
-        #toggleBtn:hover {
-            background: rgba(0,212,255,0.25);
-            box-shadow: 0 0 40px rgba(0,212,255,0.2);
-            transform: scale(1.05);
-        }
-        
-        /* ===== ПАНЕЛЬ ===== */
-        #panel {
-            position: fixed;
-            top: -500px;
-            right: 20px;
-            left: auto;
-            transform: none;
-            width: 380px;
-            max-width: 90vw;
-            z-index: 9998;
-            background: rgba(10,14,26,0.95);
-            border: 1px solid rgba(0,212,255,0.15);
-            border-radius: 20px;
-            padding: 18px 22px;
-            transition: top 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            backdrop-filter: blur(20px);
-        }
-        #panel.open {
-            top: 70px;
-        }
-        #panel .panel-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-        #panel h4 {
-            color: #d4e8ff;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        
-        /* ===== УЛУЧШЕННЫЕ СТИЛИ ДЛЯ SELECT ===== */
-        #panel select {
-            width: 100%;
-            padding: 6px 10px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.04);
-            color: #d4e8ff;
-            font-size: 12px;
-            outline: none;
-            font-weight: 600;
-        }
-        #panel select:focus {
-            border-color: rgba(0,212,255,0.3);
-        }
-        #panel select option {
-            background: #0a0e1a;
-            padding: 4px 8px;
-        }
-        
-        /* ===== СТИЛИ ДЛЯ МОДЕЛЕЙ (ЦВЕТНЫЕ) ===== */
-        #modelSelect {
-            font-weight: 700 !important;
-            font-size: 13px !important;
-            background: rgba(0,212,255,0.08) !important;
-            border: 1px solid rgba(0,212,255,0.2) !important;
-            color: #ffffff !important;
-        }
-        #modelSelect option[value="qwen2.5-coder:1.5b"] {
-            color: #4ade80 !important;
-            font-weight: 600 !important;
-        }
-        #modelSelect option[value="llama3.2:3b"] {
-            color: #60a5fa !important;
-            font-weight: 600 !important;
-        }
-        #modelSelect option[value="mistral:7b"] {
-            color: #fbbf24 !important;
-            font-weight: 600 !important;
-        }
-        #modelSelect option[value="llama3.1:8b"] {
-            color: #f472b6 !important;
-            font-weight: 600 !important;
-        }
-        
-        /* ===== СТИЛИ ДЛЯ ТЕМ ===== */
-        #themeSelect {
-            font-weight: 600 !important;
-            font-size: 13px !important;
-        }
-        #themeSelect option {
-            color: #d4e8ff !important;
-        }
-        #themeSelect option[value="neon"] { color: #00d4ff !important; }
-        #themeSelect option[value="cyber"] { color: #ff44ff !important; }
-        #themeSelect option[value="matrix"] { color: #44ff44 !important; }
-        #themeSelect option[value="ocean"] { color: #66ddff !important; }
-        #themeSelect option[value="sunset"] { color: #ffaa88 !important; }
-        #themeSelect option[value="forest"] { color: #88ff88 !important; }
-        #themeSelect option[value="cosmos"] { color: #cc88ff !important; }
-        #themeSelect option[value="lava"] { color: #ff8866 !important; }
-        #themeSelect option[value="gold"] { color: #ffdd88 !important; }
-        #themeSelect option[value="purple"] { color: #dd88ff !important; }
-        #themeSelect option[value="cherry"] { color: #ff88bb !important; }
-        #themeSelect option[value="emerald"] { color: #66ffaa !important; }
-        #themeSelect option[value="ice"] { color: #88ddff !important; }
-        #themeSelect option[value="wine"] { color: #ff6677 !important; }
-        #themeSelect option[value="moon"] { color: #c8d0e0 !important; }
-        #themeSelect option[value="hightech"] { color: #88ddff !important; }
-        #themeSelect option[value="nature"] { color: #88dd88 !important; }
-        #themeSelect option[value="noir"] { color: #ddccaa !important; }
-        #themeSelect option[value="chaos"] { color: #ff88ff !important; }
-        #themeSelect option[value="midnight"] { color: #aabbdd !important; }
-        #themeSelect option[value="candy"] { color: #ff88dd !important; }
-        #themeSelect option[value="stealth"] { color: #888888 !important; }
-        #themeSelect option[value="aurora"] { color: #88ddbb !important; }
-        
-        /* ===== СТИЛИ ДЛЯ ПРОВАЙДЕРОВ ===== */
-        #providerSelect {
-            font-weight: 600 !important;
-            font-size: 13px !important;
-            background: rgba(255,255,255,0.06) !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            color: #e8f0ff !important;
-        }
-        #providerSelect option {
-            background: #0a0e1a !important;
-            color: #e8f0ff !important;
-        }
-        
-        /* ===== СТИЛИ ДЛЯ ПОЛЗУНКОВ ===== */
-        .slider-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 4px;
-            padding: 4px 6px;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.02);
-            transition: all 0.3s ease;
-        }
-        .slider-row:hover {
-            background: rgba(255,255,255,0.06);
-        }
-        .slider-icon {
-            font-size: 14px;
-            min-width: 24px;
-        }
-        .slider-label {
-            font-size: 11px;
-            color: #8899bb;
-            min-width: 82px;
-            font-weight: 500;
-        }
-        .slider-value {
-            font-size: 12px;
-            color: #00d4ff;
-            min-width: 28px;
-            text-align: center;
-            font-weight: bold;
-            transition: color 0.3s ease;
-        }
-        .slider-row input[type="range"] {
-            flex: 1;
-            height: 4px;
-            -webkit-appearance: none;
-            appearance: none;
-            background: rgba(255,255,255,0.1);
-            border-radius: 4px;
-            outline: none;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        .slider-row input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            box-shadow: 0 0 15px rgba(0,212,255,0.3);
-        }
-        .slider-row input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
-        .slider-row input[type="range"]::-moz-range-thumb {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        #cringeSlider::-webkit-slider-thumb {
-            background: #ff44ff;
-            box-shadow: 0 0 15px rgba(255,68,255,0.4);
-        }
-        #cringeSlider::-moz-range-thumb {
-            background: #ff44ff;
-        }
-        #temperatureSlider::-webkit-slider-thumb {
-            background: #00d4ff;
-            box-shadow: 0 0 15px rgba(0,212,255,0.4);
-        }
-        #temperatureSlider::-moz-range-thumb {
-            background: #00d4ff;
-        }
-        .slider-row input[type="range"]:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        
-        /* ===== КНОПКИ В ПАНЕЛИ ===== */
-        #panel .row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 8px;
-        }
-        #panel .row span {
-            font-size: 12px;
-            color: #8899bb;
-            min-width: 30px;
-        }
-        #panel .btn-sm {
-            padding: 4px 10px;
-            font-size: 11px;
-        }
-        #panel .char-list {
-            max-height: 120px;
-            overflow-y: auto;
-            font-size: 12px;
-        }
-        #panel .char-list div {
-            padding: 4px 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            color: #d4e8ff;
-        }
-        #panel .char-list div:hover {
-            background: rgba(255,255,255,0.04);
-        }
-        #panel .char-list .del {
-            color: #ff6b6b;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 12px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Кнопка-стрелка (справа вверху) -->
-        <button id="toggleBtn" onclick="togglePanel()">
-            <span id="arrowIcon">⚙️</span>
-        </button>
-
-        <!-- Плавная выезжающая панель (справа) -->
-        <div id="panel">
-            <div class="panel-grid">
-                <div>
-                    <h4>👤 Персонажи</h4>
-                    <div class="row">
-                        <select id="charSelect" style="flex:1;"></select>
-                        <button class="btn btn-sm btn-danger" onclick="deleteCurrentCharacter()">🗑</button>
-                    </div>
-                    <div class="char-list" id="charList"></div>
-                </div>
-                <div>
-                    <h4>⚙️ Настройки</h4>
-                    <div class="row">
-                        <span style="min-width:30px;">🤖</span>
-                        <select id="providerSelect" style="flex:1;">
-                            <option value="ollama">Ollama</option>
-                            <option value="openai">OpenAI</option>
-                            <option value="gemini">Gemini</option>
-                            <option value="claude">Claude</option>
-                        </select>
-                    </div>
-                    <div class="row">
-                        <span style="min-width:30px;">📦</span>
-                        <select id="modelSelect" style="flex:1;">
-                            <option value="qwen2.5-coder:1.5b">⚡ 1.5B (Быстрая)</option>
-                            <option value="llama3.2:3b">⚡ 3B (Средняя)</option>
-                            <option value="mistral:7b">⚡ 7B (Умная)</option>
-                            <option value="llama3.1:8b">⚡ 8B (Тяжёлая)</option>
-                        </select>
-                    </div>
-                    <div class="row">
-                        <span style="min-width:30px;">🎨</span>
-                        <select id="themeSelect" style="flex:1;">
-                            <option value="neon">💠 Неон</option>
-                            <option value="cyber">🌀 Киберпанк</option>
-                            <option value="matrix">💚 Матрица</option>
-                            <option value="ocean">🌊 Океан</option>
-                            <option value="sunset">🌅 Закат</option>
-                            <option value="forest">🌳 Лес</option>
-                            <option value="cosmos">🌠 Космос</option>
-                            <option value="lava">🌋 Лава</option>
-                            <option value="gold">✨ Золото</option>
-                            <option value="purple">🟣 Пурпур</option>
-                            <option value="cherry">🌸 Вишня</option>
-                            <option value="emerald">💎 Изумруд</option>
-                            <option value="sunny">☀️ Солнечная</option>
-                            <option value="ice">❄️ Лёд</option>
-                            <option value="wine">🍷 Вино</option>
-                            <option value="moon">🌙 Лунная</option>
-                            <option value="hightech">🧊 Хай-тек</option>
-                            <option value="nature">🌿 Природа</option>
-                            <option value="noir">🕶️ Нуар</option>
-                            <option value="chaos">🌀 Хаос</option>
-                            <option value="midnight">🌙 Полночь</option>
-                            <option value="candy">🍬 Конфетка</option>
-                            <option value="stealth">🥷 Стелс</option>
-                            <option value="aurora">🌌 Аврора</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Ползунки -->
-                    <div class="slider-row">
-                        <span class="slider-icon">😬</span>
-                        <span class="slider-label">Кринжометр</span>
-                        <span class="slider-value" id="cringeLabel">5.0</span>
-                        <input type="range" id="cringeSlider" min="0" max="10" value="5" step="0.5">
-                    </div>
-                    <div class="slider-row">
-                        <span class="slider-icon">🌡️</span>
-                        <span class="slider-label">Температура</span>
-                        <span class="slider-value" id="temperatureLabel">5.0</span>
-                        <input type="range" id="temperatureSlider" min="0" max="10" value="5" step="0.5">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <header class="header">
-            <h1 id="appTitle">🧠 NeoBrain</h1>
-            <div class="header-actions">
-                <button class="btn btn-success" onclick="showCreateCharacterDialog()">➕ Персонаж</button>
-                <button class="btn btn-gold" onclick="showGenerateCharacterDialog()">✨ Создать по описанию</button>
-                <button class="btn btn-purple" onclick="showCreateRoom()">🏠 Комната</button>
-                <button class="btn btn-primary" onclick="openChatPage()">🔗 Открыть в браузере</button>
-                <button class="btn" onclick="loadData()">🔄 Обновить</button>
-                <button class="btn" onclick="openShareModal()">📤</button>
-            </div>
-        </header>
-
-        <div class="content">
-            <div class="sidebar" id="sidebar">
-                <div class="sidebar-title" id="sidebarTitle">📋 Список персонажей</div>
-                <div id="sidebarList"></div>
-            </div>
-            <div class="chat-area">
-                <div class="chat-header">
-                    <span class="title" id="chatTitle">Выберите чат</span>
-                    <span class="subtitle" id="chatSubtitle">Нажмите на элемент слева</span>
-                </div>
-                <div class="chat-messages" id="chatMessages"></div>
-                <div class="chat-input">
-                    <input type="text" id="messageInput" placeholder="Напишите сообщение..." disabled>
-                    <button class="btn btn-primary" id="sendBtn" disabled>Отправить</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="status">Готов к работе...</div>
-    </div>
-
-    <!-- Модальные окна -->
-    <div class="modal-overlay" id="charModal">
-        <div class="modal">
-            <h2>✦ Новый персонаж</h2>
-            <label>Имя:</label>
-            <input type="text" id="charName" placeholder="Введите имя...">
-            <label>Описание/характер:</label>
-            <input type="text" id="charStyle" placeholder="Весёлый, серьёзный, добрый...">
-            <label>System prompt:</label>
-            <input type="text" id="charPrompt" placeholder="Ты — полезный AI-помощник...">
-            <div class="modal-actions">
-                <button class="btn" onclick="closeModal('charModal')">Отмена</button>
-                <button class="btn btn-success" onclick="createCharacter()">✅ Создать</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="generateModal">
-        <div class="modal">
-            <h2>✨ Создать персонажа по описанию</h2>
-            <label>Опишите персонажа:</label>
-            <input type="text" id="generateDescription" placeholder="Весёлый кот-философ, который любит рассуждать о жизни...">
-            <div style="font-size:12px; color:#8899bb; margin-bottom:12px;">
-                💡 Примеры: "Мудрый старец", "Весёлый робот", "Добрый собеседник"
-            </div>
-            <div class="modal-actions">
-                <button class="btn" onclick="closeModal('generateModal')">Отмена</button>
-                <button class="btn btn-gold" onclick="generateCharacter()">✨ Сгенерировать</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="roomModal">
-        <div class="modal">
-            <h2>🏠 Создание комнаты</h2>
-            <label>Название комнаты:</label>
-            <input type="text" id="roomName" placeholder="Введите название...">
-            <label>Выберите персонажей (2-10):</label>
-            <div class="checkbox-group" id="roomChars"></div>
-            <label>Режим ответов:</label>
-            <select id="roomMode">
-                <option value="random">🎲 Случайный</option>
-                <option value="strict">🎯 Строгий</option>
-                <option value="interrupt">💬 Перебивание</option>
-            </select>
-            <label>Схема (для строгого режима, через →):</label>
-            <input type="text" id="roomOrder" placeholder="Например: П1→П2→П3">
-            <div class="modal-actions">
-                <button class="btn" onclick="closeModal('roomModal')">Отмена</button>
-                <button class="btn btn-purple" onclick="createRoom()">🏠 Создать</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="shareModal" onclick="if(event.target===this) closeShareModal()">
-        <div class="modal">
-            <h2>📤 Поделиться доступом</h2>
-            <p style="color:#8899bb; margin-bottom:10px;">Отправь эту ссылку друзьям в одной сети:</p>
-            <div style="display:flex; gap:10px; margin-bottom:16px;">
-                <span id="shareLinkText" style="flex:1; padding:8px 12px; border-radius:8px; background:rgba(255,255,255,0.04); color:#d4e8ff; word-break:break-all;">Загрузка...</span>
-                <button class="btn btn-primary" onclick="copyShareLink()">Копировать</button>
-            </div>
-            <div style="display:flex; justify-content:flex-end;">
-                <button class="btn" onclick="closeShareModal()">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // ============================================================
-        // ПЛАВНАЯ ПАНЕЛЬ (СПРАВА)
-        // ============================================================
-        var panelOpen = false;
-
-        function togglePanel() {
-            var panel = document.getElementById('panel');
-            var arrow = document.getElementById('arrowIcon');
-            
-            if (panelOpen) {
-                panel.classList.remove('open');
-                arrow.textContent = '⚙️';
-                panelOpen = false;
-            } else {
-                panel.classList.add('open');
-                arrow.textContent = '✖';
-                panelOpen = true;
+            "stream": True,
+            "options": {
+                "temperature": self.temperature,
+                "num_predict": max_tokens
             }
         }
 
-        // Автоматически скрываем панель при клике вне её
-        document.addEventListener('click', function(e) {
-            var panel = document.getElementById('panel');
-            var toggleBtn = document.getElementById('toggleBtn');
-            if (panelOpen && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
-                togglePanel();
-            }
-        });
-
-        // ============================================================
-        // ПЛАВНЫЕ ПОЛЗУНКИ
-        // ============================================================
-        function initSliders() {
-            var cringeSlider = document.getElementById('cringeSlider');
-            var cringeLabel = document.getElementById('cringeLabel');
-            if (cringeSlider && cringeLabel) {
-                cringeSlider.addEventListener('input', function() {
-                    var val = parseFloat(this.value).toFixed(1);
-                    cringeLabel.textContent = val;
-                    var intensity = val / 10;
-                    var r = 255;
-                    var g = Math.round(68 + (255 - 68) * (1 - intensity));
-                    var b = Math.round(68 + (255 - 68) * (1 - intensity));
-                    cringeLabel.style.color = 'rgb(' + r + ',' + g + ',' + b + ')';
-                });
-                cringeSlider.dispatchEvent(new Event('input'));
-            }
-
-            var tempSlider = document.getElementById('temperatureSlider');
-            var tempLabel = document.getElementById('temperatureLabel');
-            if (tempSlider && tempLabel) {
-                tempSlider.addEventListener('input', function() {
-                    var val = parseFloat(this.value).toFixed(1);
-                    tempLabel.textContent = val;
-                    var intensity = val / 10;
-                    var r = Math.round(0 + 212 * intensity);
-                    var g = Math.round(212 * (1 - intensity));
-                    var b = Math.round(255 * (1 - intensity * 0.5));
-                    tempLabel.style.color = 'rgb(' + r + ',' + g + ',' + b + ')';
-                });
-                tempSlider.dispatchEvent(new Event('input'));
-            }
-        }
-
-        // ============================================================
-        // ПЛАВНОЕ ПОЯВЛЕНИЕ КАРТОЧЕК
-        // ============================================================
-        function animateCards() {
-            var items = document.querySelectorAll('.chat-item');
-            items.forEach(function(item, index) {
-                item.style.opacity = '0';
-                item.style.transform = 'translateX(-20px)';
-                item.style.transition = 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-                setTimeout(function() {
-                    item.style.opacity = '1';
-                    item.style.transform = 'translateX(0)';
-                }, 100 + index * 80);
-            });
-        }
-
-        // ============================================================
-        // ОСНОВНЫЕ ФУНКЦИИ
-        // ============================================================
-        var currentId = null;
-        var currentType = null;
-        var characters = [];
-        var rooms = [];
-
-        function showModal(id) {
-            var el = document.getElementById(id);
-            if (el) {
-                el.classList.add('active');
-                el.style.display = 'flex';
-            }
-        }
-
-        function closeModal(id) {
-            var el = document.getElementById(id);
-            if (el) {
-                el.classList.remove('active');
-                setTimeout(function() { el.style.display = 'none'; }, 300);
-            }
-        }
-
-        function closeShareModal() {
-            var el = document.getElementById('shareModal');
-            if (el) {
-                el.classList.remove('active');
-                setTimeout(function() { el.style.display = 'none'; }, 300);
-            }
-        }
-
-        function openShareModal() {
-            var el = document.getElementById('shareModal');
-            if (el) {
-                el.style.display = 'flex';
-                setTimeout(function() { el.classList.add('active'); }, 10);
-            }
-            fetch('/get_ip')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    var linkEl = document.getElementById('shareLinkText');
-                    if (linkEl) linkEl.textContent = 'http://' + data.ip + ':8000';
-                })
-                .catch(function() {
-                    var linkEl = document.getElementById('shareLinkText');
-                    if (linkEl) linkEl.textContent = 'Не удалось получить IP';
-                });
-        }
-
-        function copyShareLink() {
-            var textEl = document.getElementById('shareLinkText');
-            if (!textEl) return;
-            var text = textEl.textContent;
-            navigator.clipboard.writeText(text)
-                .then(function() { alert('Ссылка скопирована!'); })
-                .catch(function() { alert('Не удалось скопировать ссылку'); });
-        }
-
-        function openChatPage() {
-            if (!currentId) {
-                alert('Сначала выберите персонажа!');
-                return;
-            }
-            var url = '/chat/' + currentId;
-            window.open(url, '_blank');
-        }
-
-        function loadData() {
-            var statusEl = document.getElementById('status');
-            if (statusEl) statusEl.textContent = '⏳ Загрузка...';
-            
-            Promise.all([
-                fetch('/characters').then(function(r) { 
-                    if (!r.ok) throw new Error('Ошибка сервера: ' + r.status);
-                    return r.json(); 
-                }),
-                fetch('/rooms').then(function(r) { 
-                    if (!r.ok) throw new Error('Ошибка сервера: ' + r.status);
-                    return r.json(); 
-                })
-            ])
-            .then(function(data) {
-                var charData = data[0];
-                var roomData = data[1];
-                characters = charData.characters || [];
-                rooms = roomData.rooms || [];
-                renderAll();
-                if (characters.length > 0 && !currentId) {
-                    selectCharacter(characters[0].id);
-                }
-                if (statusEl) statusEl.textContent = '✅ Данные обновлены';
-            })
-            .catch(function(error) {
-                if (statusEl) statusEl.textContent = '❌ Ошибка: ' + error.message;
-                alert('Ошибка загрузки: ' + error.message + '\n\nУбедитесь, что сервер запущен (http://localhost:8000)');
-            });
-        }
-
-        function renderAll() {
-            renderSidebar();
-            renderCharSelect();
-            renderCharList();
-        }
-
-        function renderSidebar() {
-            var list = document.getElementById('sidebarList');
-            if (!list) return;
-            list.innerHTML = '';
-
-            var activeTab = document.querySelector('.tab.active');
-            var tab = activeTab ? activeTab.dataset.tab : 'characters';
-            var items = tab === 'characters' ? characters : rooms;
-
-            if (!items || items.length === 0) {
-                list.innerHTML = '<div class="empty-state"><div class="icon">📭</div><div>Нет ' + (tab === 'characters' ? 'персонажей' : 'комнат') + '</div></div>';
-                return;
-            }
-
-            items.forEach(function(item) {
-                var div = document.createElement('div');
-                div.className = 'chat-item' + (currentId === item.id ? ' active' : '');
-
-                var nameSpan = document.createElement('span');
-                nameSpan.className = 'name';
-                if (tab === 'characters') {
-                    nameSpan.textContent = '👤 ' + item.name;
-                } else {
-                    var charNames = (item.characters || []).map(function(c) { return c.name; }).join(', ');
-                    nameSpan.textContent = '🏠 ' + item.name + ' (' + charNames + ')';
-                }
-                div.appendChild(nameSpan);
-
-                var actions = document.createElement('div');
-                actions.style.display = 'flex';
-                actions.style.alignItems = 'center';
-                actions.style.gap = '6px';
-
-                var badge = document.createElement('span');
-                badge.className = 'badge';
-                badge.textContent = item.history_count || 0;
-                actions.appendChild(badge);
-
-                var delBtn = document.createElement('button');
-                delBtn.className = 'delete-btn';
-                delBtn.textContent = '✕';
-                delBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    if (confirm('Удалить?')) {
-                        var url = tab === 'characters' ? '/character/' + item.id : '/room/' + item.id;
-                        fetch(url, { method: 'DELETE' })
-                            .then(function() {
-                                if (currentId === item.id) {
-                                    currentId = null;
-                                    clearChat();
-                                }
-                                loadData();
-                            });
-                    }
-                };
-                actions.appendChild(delBtn);
-
-                div.appendChild(actions);
-                div.onclick = function() {
-                    if (tab === 'characters') {
-                        openCharacter(item.id);
-                    } else {
-                        openRoom(item.id);
-                    }
-                };
-
-                list.appendChild(div);
-            });
-            
-            animateCards();
-        }
-
-        function renderCharSelect() {
-            var select = document.getElementById('charSelect');
-            if (!select) return;
-            select.innerHTML = '';
-
-            if (!characters || characters.length === 0) {
-                var opt = document.createElement('option');
-                opt.textContent = 'Нет персонажей';
-                select.appendChild(opt);
-                return;
-            }
-
-            characters.forEach(function(char) {
-                var opt = document.createElement('option');
-                opt.value = char.id;
-                opt.textContent = char.name + (char.gender === 'female' ? ' ♀' : ' ♂');
-                select.appendChild(opt);
-            });
-
-            if (currentId) {
-                select.value = currentId;
-            } else if (characters.length > 0) {
-                select.value = characters[0].id;
-            }
-
-            select.onchange = function() {
-                if (this.value) {
-                    selectCharacter(this.value);
-                }
-            };
-        }
-
-        function renderCharList() {
-            var container = document.getElementById('charList');
-            if (!container) return;
-            container.innerHTML = '';
-
-            if (!characters || characters.length === 0) {
-                container.innerHTML = '<div style="color:#8899bb; padding:10px; text-align:center;">Нет персонажей</div>';
-                return;
-            }
-
-            characters.forEach(function(char) {
-                var div = document.createElement('div');
-                div.className = 'char-item';
-                div.style.cssText = 'display:flex; justify-content:space-between; padding:4px 8px; border-radius:6px; color:#d4e8ff; cursor:pointer; font-size:12px;';
-                div.onclick = function() { selectCharacter(char.id); };
-
-                var span = document.createElement('span');
-                span.textContent = char.name + ' (' + char.history_count + ' сообщ.)';
-
-                var deleteBtn = document.createElement('button');
-                deleteBtn.className = 'del';
-                deleteBtn.textContent = '✕';
-                deleteBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    if (confirm('Удалить персонажа "' + char.name + '"?')) {
-                        fetch('/character/' + char.id, { method: 'DELETE' })
-                            .then(function() {
-                                if (currentId === char.id) {
-                                    currentId = null;
-                                    clearChat();
-                                }
-                                loadData();
-                            });
-                    }
-                };
-
-                div.appendChild(span);
-                div.appendChild(deleteBtn);
-                container.appendChild(div);
-            });
-        }
-
-        // Остальные функции
-        function showCreateCharacterDialog() {
-            document.getElementById('charName').value = '';
-            document.getElementById('charStyle').value = '';
-            document.getElementById('charPrompt').value = 'Ты — полезный и дружелюбный AI-помощник.';
-            showModal('charModal');
-        }
-
-        function createCharacter() {
-            var statusEl = document.getElementById('status');
-            var name = document.getElementById('charName').value.trim();
-            var style = document.getElementById('charStyle').value.trim();
-            var system_prompt = document.getElementById('charPrompt').value.trim();
-            
-            if (!name) {
-                alert('Введите имя персонажа!');
-                return;
-            }
-
-            statusEl.textContent = '⏳ Создание персонажа...';
-
-            fetch('/character/new', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: name,
-                    style: style,
-                    system_prompt: system_prompt
-                })
-            })
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                if (data.error) {
-                    statusEl.textContent = '❌ Ошибка: ' + data.error;
-                    alert('Ошибка: ' + data.error);
-                    return;
-                }
-                closeModal('charModal');
-                loadData();
-                statusEl.textContent = '✅ Персонаж "' + name + '" создан!';
-            })
-            .catch(function(error) {
-                statusEl.textContent = '❌ Ошибка: ' + error.message;
-                alert('Ошибка при создании персонажа: ' + error.message);
-            });
-        }
-
-        function showGenerateCharacterDialog() {
-            document.getElementById('generateDescription').value = '';
-            showModal('generateModal');
-        }
-
-        function generateCharacter() {
-            var statusEl = document.getElementById('status');
-            var description = document.getElementById('generateDescription').value.trim();
-            
-            if (!description || description.length < 3) {
-                alert('Введите описание персонажа (минимум 3 символа)');
-                return;
-            }
-
-            statusEl.textContent = '🎨 Генерация персонажа...';
-
-            fetch('/character/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    description: description
-                })
-            })
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                if (data.error) {
-                    statusEl.textContent = '❌ Ошибка: ' + data.error;
-                    alert('Ошибка: ' + data.error);
-                    return;
-                }
-                closeModal('generateModal');
-                loadData();
-                statusEl.textContent = '✨ Персонаж "' + data.name + '" создан!';
-                if (data.greeting) {
-                    alert('✨ Персонаж "' + data.name + '" создан!\n\nПриветствие: ' + data.greeting);
-                }
-            })
-            .catch(function(error) {
-                statusEl.textContent = '❌ Ошибка: ' + error.message;
-                alert('Ошибка при генерации персонажа: ' + error.message);
-            });
-        }
-
-        function selectCharacter(id) {
-            if (!id) return;
-            currentId = id;
-            currentType = 'character';
-            renderAll();
-            loadCharacterHistory(id);
-            document.getElementById('status').textContent = '💬 Загрузка...';
-        }
-
-        function loadCharacterHistory(id) {
-            fetch('/character/' + id)
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    var container = document.getElementById('chatContainer');
-                    if (!container) return;
-                    container.innerHTML = '';
-                    if (data.history && data.history.length > 0) {
-                        data.history.forEach(function(msg) {
-                            addMessageToChat(msg.role, msg.content);
-                        });
-                    } else {
-                        var empty = document.createElement('div');
-                        empty.style.cssText = 'text-align:center; padding:20px; color:#8899bb;';
-                        empty.textContent = '💬 Начните диалог с персонажем';
-                        container.appendChild(empty);
-                    }
-                    var statusEl = document.getElementById('status');
-                    if (statusEl) statusEl.textContent = '💬 ' + data.name;
-                })
-                .catch(function() {
-                    document.getElementById('status').textContent = '❌ Ошибка загрузки истории';
-                });
-        }
-
-        function deleteCurrentCharacter() {
-            if (!currentId) {
-                alert('Выберите персонажа');
-                return;
-            }
-            if (!confirm('Удалить персонажа?')) return;
-            fetch('/character/' + currentId, { method: 'DELETE' })
-                .then(function() {
-                    currentId = null;
-                    clearChat();
-                    loadData();
-                });
-        }
-
-        function showCreateRoom() {
-            fetch('/characters')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    var container = document.getElementById('roomChars');
-                    if (!container) return;
-                    container.innerHTML = '';
-                    var chars = data.characters || [];
-                    if (chars.length === 0) {
-                        container.innerHTML = '<div style="color:#8899bb; padding:10px; text-align:center;">Сначала создайте персонажей!</div>';
-                        return;
-                    }
-                    chars.forEach(function(char) {
-                        var label = document.createElement('label');
-                        var cb = document.createElement('input');
-                        cb.type = 'checkbox';
-                        cb.value = char.id;
-                        label.appendChild(cb);
-                        label.appendChild(document.createTextNode(' ' + char.name));
-                        container.appendChild(label);
-                    });
-                    document.getElementById('roomName').value = 'Комната №' + Date.now().toString().slice(-4);
-                    document.getElementById('roomMode').value = 'random';
-                    document.getElementById('roomOrder').value = '';
-                    showModal('roomModal');
-                })
-                .catch(function(error) {
-                    alert('Ошибка загрузки персонажей: ' + error);
-                });
-        }
-
-        function createRoom() {
-            var name = document.getElementById('roomName').value.trim();
-            if (!name) {
-                alert('Введите название комнаты!');
-                return;
-            }
-
-            var checkboxes = document.querySelectorAll('#roomChars input:checked');
-            var character_ids = Array.from(checkboxes).map(function(cb) { return cb.value; });
-
-            if (character_ids.length < 2) {
-                alert('Выберите минимум 2 персонажа!');
-                return;
-            }
-            if (character_ids.length > 10) {
-                alert('Максимум 10 персонажей!');
-                return;
-            }
-
-            var mode = document.getElementById('roomMode').value;
-            var orderText = document.getElementById('roomOrder').value.trim();
-
-            var order = [];
-            if (mode === 'strict' && orderText) {
-                order = orderText.split('→').map(function(s) { return s.trim(); }).filter(function(s) { return s; });
-            }
-
-            fetch('/room/new', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: name,
-                    character_ids: character_ids,
-                    mode: mode,
-                    order: order,
-                    interrupt: mode === 'interrupt'
-                })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                closeModal('roomModal');
-                if (data.error) {
-                    alert('Ошибка: ' + data.error);
-                    return;
-                }
-                loadData();
-                document.getElementById('status').textContent = '✅ Комната "' + name + '" создана!';
-                switchTab('rooms');
-            })
-            .catch(function(error) {
-                alert('Ошибка при создании комнаты: ' + error);
-            });
-        }
-
-        function openRoom(id) {
-            currentId = id;
-            currentType = 'room';
-            renderSidebar();
-
-            fetch('/room/' + id)
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    var charNames = (data.characters || []).map(function(c) { return c.name; }).join(', ');
-                    var titleEl = document.getElementById('chatTitle');
-                    var subtitleEl = document.getElementById('chatSubtitle');
-                    if (titleEl) titleEl.textContent = '🏠 ' + data.name;
-                    if (subtitleEl) subtitleEl.textContent = '👥 ' + charNames + ' | Режим: ' + data.mode;
-
-                    var schemaHtml = '';
-                    if (data.mode === 'strict' && data.order && data.order.length > 0) {
-                        var chars = data.characters || [];
-                        schemaHtml = '<div class="room-schema">';
-                        data.order.forEach(function(id, i) {
-                            var c = chars.find(function(ch) { return ch.id === id; });
-                            schemaHtml += '<span class="schema-block">' + (c ? c.name : '?') + '</span>';
-                            if (i < data.order.length - 1) {
-                                schemaHtml += '<span class="schema-arrow">→</span>';
-                            }
-                        });
-                        schemaHtml += '<span class="schema-arrow">↻</span>';
-                        schemaHtml += '</div>';
-                    } else if (data.mode === 'random') {
-                        schemaHtml = '<div class="room-schema"><span class="schema-mode">🎲 Случайный порядок</span></div>';
-                    } else if (data.mode === 'interrupt') {
-                        schemaHtml = '<div class="room-schema"><span class="schema-mode">💬 С возможностью перебивания</span></div>';
-                    }
-                    if (subtitleEl) subtitleEl.innerHTML += schemaHtml;
-
-                    var inputEl = document.getElementById('messageInput');
-                    var sendEl = document.getElementById('sendBtn');
-                    if (inputEl) inputEl.disabled = false;
-                    if (sendEl) sendEl.disabled = false;
-
-                    var messages = document.getElementById('chatMessages');
-                    if (!messages) return;
-                    messages.innerHTML = '';
-                    if (data.history && data.history.length > 0) {
-                        data.history.forEach(function(msg) {
-                            var name = msg.role === 'user' ? 'Вы' : (data.characters || []).find(function(c) { return c.id === msg.role; })?.name || msg.role;
-                            addMessage(msg.role === 'user' ? 'user' : 'assistant', msg.content, name);
-                        });
-                    } else {
-                        var empty = document.createElement('div');
-                        empty.style.cssText = 'text-align:center; padding:20px; color:#8899bb;';
-                        empty.textContent = '💬 Начните диалог в комнате';
-                        messages.appendChild(empty);
-                    }
-
-                    document.getElementById('status').textContent = '💬 Комната: ' + data.name;
-                });
-        }
-
-        function sendToRoom(text) {
-            addMessage('user', text, 'Вы');
-
-            fetch('/room/' + currentId + '/message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, role: 'user' })
-            }).then(function() {
-                fetch('/room/' + currentId + '/next')
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        if (data.character) {
-                            var char = data.character;
-                            document.getElementById('status').textContent = '⏳ ' + char.name + ' думает...';
-
-                            fetch('/ask', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    prompt: 'Ты — ' + char.name + '. Твой характер: ' + (char.personality || 'нейтральный') + '. Ответь на сообщение пользователя, учитывая историю чата. Будь кратким.',
-                                    character_id: char.id
-                                })
-                            })
-                            .then(function(r) { return r.json(); })
-                            .then(function(res) {
-                                if (res.response) {
-                                    fetch('/room/' + currentId + '/message', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ text: res.response, role: char.id })
-                                    }).then(function() {
-                                        addMessage('assistant', res.response, char.name);
-                                        document.getElementById('status').textContent = '💬 ' + char.name + ' ответил';
-                                        loadData();
-                                    });
-                                }
-                            });
-                        }
-                    });
-            });
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
-            var target = document.querySelector('.tab[data-tab="' + tab + '"]');
-            if (target) target.classList.add('active');
-
-            var title = document.getElementById('sidebarTitle');
-            if (title) {
-                title.textContent = tab === 'characters' ? '📋 Список персонажей' : '🏠 Список комнат';
-            }
-
-            renderSidebar();
-            clearChat();
-            document.getElementById('status').textContent = '✅ Переключено на ' + (tab === 'characters' ? 'персонажей' : 'комнаты');
-        }
-
-        function initChat() {
-            var container = document.getElementById('chatContainer');
-            if (!container) return;
-            var welcome = document.createElement('div');
-            welcome.style.cssText = 'text-align:center; padding:40px; color:#8899bb;';
-            welcome.innerHTML = '<div style="font-size:48px; margin-bottom:12px;">💬</div><div>Выберите персонажа или комнату</div>';
-            container.appendChild(welcome);
-        }
-
-        function addMessageToChat(role, content) {
-            var container = document.getElementById('chatContainer');
-            if (!container) return;
-            var empty = container.querySelector('.empty-state');
-            if (empty) empty.remove();
-
-            var wrapper = document.createElement('div');
-            wrapper.className = 'message ' + role;
-            wrapper.style.cssText = 'display:flex; align-items:flex-start; gap:10px; margin-bottom:12px;' + (role === 'user' ? ' flex-direction:row-reverse;' : '');
-
-            var avatarDiv = document.createElement('div');
-            avatarDiv.className = 'avatar';
-            avatarDiv.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid rgba(255,255,255,0.08);';
-            avatarDiv.textContent = role === 'user' ? '👤' : '🤖';
-
-            var bubbleDiv = document.createElement('div');
-            bubbleDiv.className = 'bubble';
-            bubbleDiv.style.cssText = 'padding:10px 16px;border-radius:12px;max-width:75%;word-break:break-word;font-size:14px;line-height:1.5;color:#d4e8ff;' + 
-                (role === 'user' ? 'background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.1);' : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);');
-            bubbleDiv.textContent = content;
-
-            wrapper.appendChild(avatarDiv);
-            wrapper.appendChild(bubbleDiv);
-            container.appendChild(wrapper);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function addMessage(role, content, name) {
-            var container = document.getElementById('chatMessages');
-            if (!container) return;
-            var empty = container.querySelector('.empty-state');
-            if (empty) empty.remove();
-
-            var wrapper = document.createElement('div');
-            wrapper.className = 'message ' + role;
-            wrapper.style.cssText = 'display:flex; align-items:flex-start; gap:10px; margin-bottom:12px;' + (role === 'user' ? ' flex-direction:row-reverse;' : '');
-
-            var avatarDiv = document.createElement('div');
-            avatarDiv.className = 'avatar';
-            avatarDiv.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid rgba(255,255,255,0.08);';
-            avatarDiv.textContent = role === 'user' ? '👤' : '🤖';
-
-            var bubbleDiv = document.createElement('div');
-            bubbleDiv.className = 'bubble';
-            bubbleDiv.style.cssText = 'padding:10px 16px;border-radius:12px;max-width:75%;word-break:break-word;font-size:14px;line-height:1.5;color:#d4e8ff;' + 
-                (role === 'user' ? 'background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.1);' : 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);');
-
-            var nameLabel = document.createElement('div');
-            nameLabel.style.cssText = 'font-size:11px;color:#8899bb;margin-bottom:2px;';
-            nameLabel.textContent = name || (role === 'user' ? 'Вы' : 'AI');
-
-            var textSpan = document.createElement('div');
-            textSpan.textContent = content;
-
-            bubbleDiv.appendChild(nameLabel);
-            bubbleDiv.appendChild(textSpan);
-            wrapper.appendChild(avatarDiv);
-            wrapper.appendChild(bubbleDiv);
-            container.appendChild(wrapper);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function clearChat() {
-            var container = document.getElementById('chatContainer');
-            if (!container) return;
-            container.innerHTML = '';
-            var empty = document.createElement('div');
-            empty.className = 'empty-state';
-            empty.style.cssText = 'text-align:center; padding:40px; color:#8899bb;';
-            empty.innerHTML = '<div style="font-size:48px; margin-bottom:12px;">💬</div><div>Выберите персонажа или комнату</div>';
-            container.appendChild(empty);
-
-            var inputEl = document.getElementById('messageInput');
-            var sendEl = document.getElementById('sendBtn');
-            var titleEl = document.getElementById('chatTitle');
-            var subtitleEl = document.getElementById('chatSubtitle');
-            if (inputEl) inputEl.disabled = true;
-            if (sendEl) sendEl.disabled = true;
-            if (titleEl) titleEl.textContent = 'Выберите чат';
-            if (subtitleEl) subtitleEl.textContent = 'Нажмите на элемент слева';
-        }
-
-        function initMessageSend() {
-            var input = document.getElementById('aiInput');
-            var sendBtn = document.getElementById('aiSendBtn');
-
-            function sendMessage() {
-                if (!input) return;
-                var text = input.value.trim();
-                if (!text) return;
-                if (!currentId) {
-                    alert('Сначала создайте или выберите персонажа!');
-                    return;
-                }
-
-                if (currentType === 'character') {
-                    sendToCharacter(text);
-                    input.value = '';
-                } else if (currentType === 'room') {
-                    sendToRoom(text);
-                    input.value = '';
-                }
-            }
-
-            function sendToCharacter(text) {
-                addMessageToChat('user', text);
-
-                var modelEl = document.getElementById('modelSelect');
-                var tempEl = document.getElementById('temperatureSlider');
-                
-                var model = modelEl ? modelEl.value : 'qwen2.5-coder:1.5b';
-                var temperature = tempEl ? parseFloat(tempEl.value) / 10 : 0.5;
-
-                var thinkingWrapper = document.createElement('div');
-                thinkingWrapper.className = 'message assistant';
-                thinkingWrapper.style.cssText = 'display:flex; align-items:flex-start; gap:10px; margin-bottom:12px;';
-
-                var thinkingAvatar = document.createElement('div');
-                thinkingAvatar.className = 'avatar';
-                thinkingAvatar.style.cssText = 'width:36px;height:36px;border-radius:50%;background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid rgba(255,255,255,0.08);';
-                thinkingAvatar.textContent = '🤖';
-
-                var thinkingMsg = document.createElement('div');
-                thinkingMsg.className = 'bubble';
-                thinkingMsg.style.cssText = 'padding:10px 16px;border-radius:12px;max-width:75%;word-break:break-word;font-size:14px;line-height:1.5;color:#d4e8ff;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);';
-                thinkingMsg.textContent = 'Думаю...';
-
-                thinkingWrapper.appendChild(thinkingAvatar);
-                thinkingWrapper.appendChild(thinkingMsg);
-                var container = document.getElementById('chatContainer');
-                if (container) container.appendChild(thinkingWrapper);
-
-                fetch('/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: text,
-                        model: model,
-                        temperature: temperature,
-                        character_id: currentId
-                    })
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    thinkingWrapper.remove();
-                    if (data.response) {
-                        addMessageToChat('assistant', data.response);
-                    } else {
-                        addMessageToChat('assistant', 'Ошибка: ' + (data.error || 'Неизвестная ошибка'));
-                    }
-                    loadData();
-                })
-                .catch(function() {
-                    thinkingWrapper.remove();
-                    addMessageToChat('assistant', 'Ошибка соединения с сервером');
-                });
-            }
-
-            if (sendBtn) sendBtn.addEventListener('click', sendMessage);
-            if (input) input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') sendMessage();
-            });
-        }
-
-        function initThemes() {
-            var themeSelect = document.getElementById('themeSelect');
-            if (!themeSelect) return;
-            var savedTheme = localStorage.getItem('neobrain_theme');
-            if (savedTheme) {
-                themeSelect.value = savedTheme;
-                document.body.className = 'theme-' + savedTheme;
-            }
-            themeSelect.addEventListener('change', function() {
-                document.body.className = 'theme-' + this.value;
-                localStorage.setItem('neobrain_theme', this.value);
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.tab').forEach(function(tab) {
-                tab.addEventListener('click', function() {
-                    switchTab(this.dataset.tab);
-                });
-            });
-
-            initChat();
-            initThemes();
-            initSliders();
-            initMessageSend();
-            loadData();
-        });
-    </script>
-</body>
-</html>
-"""
+        stream_mode = self.settings.get("stream_mode", True)
+
+        try:
+            with requests.post(f"{self.ollama_url}/api/generate", json=payload, stream=True, timeout=60) as r:
+                if r.status_code == 200:
+                    response_text = ""
+
+                    if stream_mode:
+                        for line in r.iter_lines():
+                            if self.stop_generation:
+                                break
+                            if line:
+                                try:
+                                    data = json.loads(line.decode('utf-8'))
+                                    chunk = data.get('response', '')
+                                    if chunk:
+                                        response_text += chunk
+                                        ai_bubble.set_text(response_text)
+                                        self.scroll_to_bottom()
+                                        QApplication.processEvents()
+                                        time.sleep(0.01)
+                                except json.JSONDecodeError:
+                                    continue
+                    else:
+                        for line in r.iter_lines():
+                            if self.stop_generation:
+                                break
+                            if line:
+                                try:
+                                    data = json.loads(line.decode('utf-8'))
+                                    chunk = data.get('response', '')
+                                    if chunk:
+                                        response_text += chunk
+                                except json.JSONDecodeError:
+                                    continue
+                        if not self.stop_generation:
+                            ai_bubble.set_text(response_text)
+                            self.scroll_to_bottom()
+                else:
+                    ai_bubble.set_text(f"⚠️ Ошибка API: {r.status_code}")
+
+            # Если остановили генерацию — убираем сообщение
+            if self.stop_generation:
+                if ai_bubble:
+                    ai_bubble.set_text("⏹ Генерация остановлена")
+
+        except requests.exceptions.ConnectionError:
+            ai_bubble.set_text("❌ Не удалось подключиться к Ollama.\nЗапусти: `ollama serve`")
+        except requests.exceptions.Timeout:
+            ai_bubble.set_text("⏰ Таймаут. Модель думает слишком долго.")
+        except Exception as e:
+            ai_bubble.set_text(f"❌ Ошибка: {str(e)}")
+        finally:
+            self.is_generating = False
+            self.input_field.setEnabled(True)
+            self.send_btn.setVisible(True)
+            self.stop_btn.setVisible(False)
+            if not self.stop_generation:
+                self.typing_label.setText("")
+            else:
+                self.typing_label.setText("⏹ Остановлено")
+                QTimer.singleShot(2000, lambda: self.typing_label.setText(""))
+            self.stop_generation = False
 
 # ============================================================
 # ЗАПУСК
 # ============================================================
 
-@app.get("/get_ip")
-async def get_ip():
-    return {"ip": LOCAL_IP}
-
-def run_app():
-    logger.info("🔄 Запуск NeoBrain...")
-    try:
-        is_exe = getattr(sys, 'frozen', False)
-        if not is_ollama_running():
-            logger.info("🔄 Ollama не запущена, запускаем...")
-            try:
-                if sys.platform == "win32":
-                    subprocess.Popen(
-                        ["ollama", "serve"],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        creationflags=subprocess.CREATE_NO_WINDOW
-                    )
-                else:
-                    subprocess.Popen(
-                        ["ollama", "serve"],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        start_new_session=True
-                    )
-                time.sleep(3)
-                logger.info("✅ Ollama запущена")
-            except Exception as e:
-                logger.error(f"❌ Ошибка запуска Ollama: {e}")
-        else:
-            logger.info("✅ Ollama уже запущена")
-        if is_exe:
-            import webview
-            logger.info("🌐 Запуск WebView на http://127.0.0.1:8000")
-            webview.create_window('NeoBrain', 'http://127.0.0.1:8000', width=1200, height=800)
-            webview.start()
-            return
-        def run_server():
-            try:
-                uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")
-            except Exception as e:
-                logger.error(f"❌ Ошибка сервера: {e}")
-        server_thread = threading.Thread(target=run_server, daemon=True)
-        server_thread.start()
-        time.sleep(2)
-        try:
-            requests.get("http://localhost:8000", timeout=2)
-            logger.info("✅ Сервер запущен на http://localhost:8000")
-        except:
-            logger.error("❌ Сервер не запустился!")
-            input("Press Enter to exit...")
-            return
-        try:
-            import webview
-        except ImportError:
-            logger.error("❌ pywebview не установлен")
-            input("Press Enter to exit...")
-            return
-        logger.info(f"🌐 Запуск WebView на http://{LOCAL_IP}:8000")
-        webview.create_window('NeoBrain', 'http://localhost:8000', width=1200, height=800)
-        webview.start()
-    except KeyboardInterrupt:
-        logger.info("🛑 NeoBrain остановлен")
-    except Exception as e:
-        logger.critical(f"💥 Критическая ошибка: {e}")
-        import traceback
-        logger.critical(traceback.format_exc())
-
 if __name__ == "__main__":
-    run_app()
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    window = NeoBrainChat()
+    window.show()
+    sys.exit(app.exec_())
