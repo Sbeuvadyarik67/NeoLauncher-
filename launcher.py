@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import subprocess
+import shutil
 
 class NeoLauncher:
     def __init__(self, root):
@@ -168,10 +169,36 @@ class NeoLauncher:
 
         try:
             self.status_label.config(text=f"🚀 ЗАПУСК {data['name']}...")
+            
+            # ДЛЯ NEOSPACE ИСПОЛЬЗУЕМ os.startfile (как двойной клик)
+            if project_id == "neospace":
+                os.startfile(path)
+                # Даем время на запуск
+                self.root.after(3000, lambda: self.status_label.config(text=f"✦ {data['name']} ЗАПУЩЕН"))
+                return
+            
             if data.get("type") == "python":
-                subprocess.Popen([sys.executable, path], creationflags=subprocess.CREATE_NEW_CONSOLE)
+                # НАХОДИМ PYTHON В СИСТЕМЕ
+                python_exe = shutil.which('python')
+                if not python_exe:
+                    python_exe = shutil.which('python3')
+                if not python_exe:
+                    python_exe = 'python'
+                
+                # ЗАПУСКАЕМ ПРОЕКТ В ЕГО ПАПКЕ (важно для NeoSpace)
+                project_dir = os.path.dirname(path)
+                
+                subprocess.Popen(
+                    [python_exe, path],
+                    cwd=project_dir,  # Устанавливаем рабочую папку
+                    creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL
+                )
             else:
                 subprocess.Popen([path], shell=False)
+                
             self.status_label.config(text=f"✦ {data['name']} ЗАПУЩЕН")
         except Exception as e:
             messagebox.showerror("Error", f"Не удалось запустить {data['name']}:\n{str(e)}")

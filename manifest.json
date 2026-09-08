@@ -30,12 +30,18 @@
       "favorite": false
     },
     "whydoes": {
-      "name": "Why-Does-This-Exist",
-      "version": "1.0.0",
+      "name": "🌀 Why Does This Exist?",
+      "version": "2.0.0",
       "path": "projects/whydoes.py",
       "icon": "🌀",
-      "color": "#fbbf24",
-      "description": "Генератор визуального безумия",
+      "color": "#58a6ff",
+      "description": "Интерактивная панель с 12 спецрежимами, антистресс-эффектами и улучшенной производительностью",
+      "tags": [
+        "Visualization",
+        "Interactive",
+        "Effects",
+        "Dashboard"
+      ],
       "type": "python",
       "launches": 0,
       "favorite": false
