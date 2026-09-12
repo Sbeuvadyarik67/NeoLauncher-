@@ -1,8 +1,8 @@
 {
   "projects": {
     "neobrain": {
-      "name": "🧠 NeoBrain v7.3",
-      "version": "7.3.0",
+      "name": "🧠 NeoBrain v7.4",
+      "version": "7.4.0",
       "path": "projects/neobrain.py",
       "icon": "🧠",
       "color": "#00d4ff",
