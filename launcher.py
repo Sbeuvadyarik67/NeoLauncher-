@@ -6,6 +6,7 @@ import sys
 import subprocess
 import shutil
 
+
 class NeoLauncher:
     def __init__(self, root):
         self.root = root
@@ -14,7 +15,14 @@ class NeoLauncher:
         self.root.minsize(1000, 600)
         self.root.configure(bg="#050510")
 
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
+        # Определяем базовую папку:
+        # - если запущен как .exe — папка рядом с exe
+        # - если запущен как .py — папка скрипта
+        if getattr(sys, 'frozen', False):
+            self.base_dir = os.path.dirname(sys.executable)
+        else:
+            self.base_dir = os.path.dirname(os.path.abspath(__file__))
+
         self.manifest_path = os.path.join(self.base_dir, "manifest.json")
         self.manifest = self.load_manifest()
 
@@ -169,14 +177,13 @@ class NeoLauncher:
 
         try:
             self.status_label.config(text=f"🚀 ЗАПУСК {data['name']}...")
-            
+
             # ДЛЯ NEOSPACE ИСПОЛЬЗУЕМ os.startfile (как двойной клик)
             if project_id == "neospace":
                 os.startfile(path)
-                # Даем время на запуск
                 self.root.after(3000, lambda: self.status_label.config(text=f"✦ {data['name']} ЗАПУЩЕН"))
                 return
-            
+
             if data.get("type") == "python":
                 # НАХОДИМ PYTHON В СИСТЕМЕ
                 python_exe = shutil.which('python')
@@ -184,13 +191,13 @@ class NeoLauncher:
                     python_exe = shutil.which('python3')
                 if not python_exe:
                     python_exe = 'python'
-                
-                # ЗАПУСКАЕМ ПРОЕКТ В ЕГО ПАПКЕ (важно для NeoSpace)
+
+                # ЗАПУСКАЕМ ПРОЕКТ В ЕГО ПАПКЕ
                 project_dir = os.path.dirname(path)
-                
+
                 subprocess.Popen(
                     [python_exe, path],
-                    cwd=project_dir,  # Устанавливаем рабочую папку
+                    cwd=project_dir,
                     creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
@@ -198,11 +205,12 @@ class NeoLauncher:
                 )
             else:
                 subprocess.Popen([path], shell=False)
-                
+
             self.status_label.config(text=f"✦ {data['name']} ЗАПУЩЕН")
         except Exception as e:
             messagebox.showerror("Error", f"Не удалось запустить {data['name']}:\n{str(e)}")
             self.status_label.config(text=f"❌ ОШИБКА ЗАПУСКА {data['name']}")
+
 
 if __name__ == "__main__":
     root = tk.Tk()
