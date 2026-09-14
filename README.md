@@ -20,6 +20,14 @@
 
 ---
 
+## 📸 Скриншот
+
+![NeoBrain Launcher](https://github.com/user-attachments/assets/4b336725-26f3-4757-a9f5-ba946d54c279)
+
+*4 проекта в одном окне — NeoBrain, NeoSpace OS, Why Does This Exist?, NeoReceipt.*
+
+---
+
 ## 📥 Скачать
 
 **Последняя версия:** [**NeoLauncher v2.0.0**](https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/latest)
@@ -29,14 +37,6 @@
 3. Запусти `NeoLauncher.exe`
 
 > **Требования:** [Python 3.10+](https://www.python.org/downloads/) и [Ollama](https://ollama.com/) — для NeoBrain AI.
-
----
-
-## 📸 Скриншот
-
-![NeoBrain Launcher](https://github.com/user-attachments/assets/4b336725-26f3-4757-a9f5-ba946d54c279)
-
-*4 проекта в одном окне — NeoBrain, NeoSpace OS, Why Does This Exist?, NeoReceipt.*
 
 ---
 
@@ -154,7 +154,24 @@ ollama pull llama3.2:3b
 
 ## 🛠️ Технологии
 
-Python 3.10+ · PySide6 · Tkinter · Ollama · ReportLab · PyInstaller
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/PySide6-41CD52?style=for-the-badge&logo=qt&logoColor=white" />
+  <img src="https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white" />
+  <img src="https://img.shields.io/badge/Tkinter-FF6F00?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/ReportLab-FF0000?style=for-the-badge&logo=adobe-acrobat-reader&logoColor=white" />
+  <img src="https://img.shields.io/badge/PyInstaller-FFD43B?style=for-the-badge&logo=python&logoColor=black" />
+</p>
+
+---
+
+## 💖 Поддержать проект
+
+Если проект полезен:
+
+- ⭐ Поставь **звезду** на GitHub — это мотивирует!
+- 🐛 Нашёл баг? [Открой Issue](https://github.com/Sbeuvadyarik67/NeoLauncher-/issues/new/choose)
+- 💡 Есть идея? [Предложи фичу](https://github.com/Sbeuvadyarik67/NeoLauncher-/issues/new/choose)
 
 ---
 
