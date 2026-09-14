@@ -13,7 +13,15 @@
 2. Распакуй в любую папку
 3. Запусти `NeoLauncher.exe`
 
-> **Требования:** [Python 3.10+](https://www.python.org/downloads/) (отметь галочку *Add Python to PATH*) и [Ollama](https://ollama.com/) — для NeoBrain AI.
+> **Требования:** [Python 3.10+](https://www.python.org/downloads/) и [Ollama](https://ollama.com/) — для NeoBrain AI.
+
+---
+
+## 📸 Скриншот
+
+![NeoBrain Launcher](https://github.com/user-attachments/assets/4b336725-26f3-4757-a9f5-ba946d54c279)
+
+*4 проекта в одном окне — NeoBrain, NeoSpace OS, Why Does This Exist?, NeoReceipt.*
 
 ---
 
