@@ -1,0 +1,7 @@
+# NeoLauncher — зависимости
+
+# GUI для NeoBrain (PySide6)
+PySide6==6.11.2
+
+# HTTP-запросы к Ollama API
+requests==2.34.2
