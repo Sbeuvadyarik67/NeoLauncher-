@@ -13,9 +13,7 @@
 
 ![Views](https://dynamic-repo-badges.vercel.app/svg/count/7/Repository%20Views/NeoLauncher-)
 
-![GitHub Stats](https://github-readme-stats.vercel.app/api?username=Sbeuvadyarik67&show_icons=true&theme=dark&hide_border=true&count_private=true)
-
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=Sbeuvadyarik67&layout=compact&theme=dark&hide_border=true&langs_count=6)
+![GitHub Streak](https://streak-stats.demolab.com?user=Sbeuvadyarik67&theme=dark&hide_border=true)
 
 **NeoBrain Launcher** — центральная панель управления для запуска всех проектов NeoBrain в одном окне.  
 Включает NeoBrain AI Chat, NeoReceipt, NeoSpace OS и другие утилиты.
