@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Brain Clicker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Переключатель языка -->
+        <div class="lang-switch">
+            <button id="lang-ru" class="lang-btn active">RU</button>
+            <button id="lang-en" class="lang-btn">EN</button>
+        </div>
+
+        <h1>🧠 Brain Clicker</h1>
+
+        <!-- Счётчик -->
+        <div class="score">
+            <span id="score">0</span> <span id="score-label">мозгов</span>
+        </div>
+
+        <!-- Кнопка-мозг -->
+        <div class="brain-container">
+            <button id="brain" class="brain">🧠</button>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats">
+            <div><span id="clicks-label">Кликов:</span> <span id="clicks">0</span></div>
+            <div><span id="psec-label">Мозгов/сек:</span> <span id="per-sec">0</span></div>
+        </div>
+
+        <!-- Подсказка про оффлайн -->
+        <div class="offline-hint">
+            <span id="offline-hint-label">Если уйдёте — я поработаю за вас! 🧠</span>
+        </div>
+
+        <!-- Магазин -->
+        <div class="shop-wrapper">
+            <div id="teaser-container" class="teaser-container"></div>
+            <div class="shop" id="shop">
+                <div class="shop-content">
+                    <div class="shop-title">🛒 <span id="shop-label">Магазин</span></div>
+                    <div class="shop-locked">
+                        <div class="shop-soon">Coming soon...</div>
+                        <div class="shop-hint" id="shop-hint">Магазин откроется позже</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопка сброса -->
+        <button id="reset" class="reset-btn">
+            <span id="reset-label">Сбросить прогресс</span>
+        </button>
+    </div>
+
+    <!-- Слой для тени -->
+    <div id="shadow-layer" class="shadow-layer"></div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

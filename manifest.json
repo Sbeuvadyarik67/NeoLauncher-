@@ -18,6 +18,22 @@
       "launches": 0,
       "favorite": false
     },
+    "brain-clicker": {
+      "name": "🧠 Brain Clicker",
+      "version": "1.0.0",
+      "path": "projects/brain-clicker/index.html",
+      "icon": "🖱️🧠",
+      "color": "#ff2d8a",
+      "description": "Кликер с мозгами: кликай, лови тени, собирай подарки",
+      "tags": [
+        "Game",
+        "Clicker",
+        "HTML"
+      ],
+      "type": "html",
+      "launches": 0,
+      "favorite": false
+    },
     "neospace": {
       "name": "NeoSpace OS",
       "version": "2.0.0",

@@ -114,7 +114,7 @@ class NeoLauncher:
         tk.Label(
             inner,
             text=icon,
-            font=("Segoe UI", 36),
+            font=("Segoe UI", 26),
             bg="#0f0f2a",
             fg=color
         ).pack(pady=(0, 10))
@@ -182,6 +182,13 @@ class NeoLauncher:
             if project_id == "neospace":
                 os.startfile(path)
                 self.root.after(3000, lambda: self.status_label.config(text=f"✦ {data['name']} ЗАПУЩЕН"))
+                return
+            
+            # Для HTML-проектов (игры) — открываем в браузере
+            if data.get("type") == "html":
+                import webbrowser
+                webbrowser.open(f"file:///{path.replace(os.sep, '/')}")
+                self.root.after(2000, lambda: self.status_label.config(text=f"✦ {data['name']} ЗАПУЩЕН"))
                 return
 
             if data.get("type") == "python":
