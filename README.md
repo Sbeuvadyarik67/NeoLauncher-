@@ -81,15 +81,19 @@ pyinstaller NeoLauncher.spec
 
 ```
 NeoLauncher/
-├── launcher.py          # Лаунчер
-├── manifest.json        # Список проектов
-├── icon.ico / icon.png  # Иконки
-├── requirements.txt     # Зависимости
+├── launcher.py              # Лаунчер
+├── manifest.json            # Список проектов
+├── icon.ico / icon.png      # Иконки
+├── requirements.txt         # Зависимости
 └── projects/
-    ├── neobrain.py      # 🧠 NeoBrain AI Chat
-    ├── neoreceipt.py    # 📄 NeoReceipt
-    ├── neospace.py      # 🖥️ NeoSpace OS
-    └── whydoes.py       # 🌀 Why Does This Exist?
+    ├── neobrain.py          # 🧠 NeoBrain AI Chat
+    ├── neoreceipt.py        # 📄 NeoReceipt
+    ├── neospace.py          # 🖥️ NeoSpace OS
+    ├── whydoes.py           # 🌀 Why Does This Exist?
+    └── brain-clicker/       # 🎮 Brain Clicker
+        ├── index.html       # Игра (HTML)
+        ├── style.css        # Стили
+        └── script.js        # Логика
 ```
 
 ---
