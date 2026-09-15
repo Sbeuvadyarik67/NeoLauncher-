@@ -1,7 +1,30 @@
+<div align="center">
+
 # 🧠 NeoBrain Launcher
+
+![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=22&duration=3000&pause=1000&color=00D4FF&center=true&vCenter=true&width=600&lines=AI-%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D1%8B+%D0%B2+%D0%BE%D0%B4%D0%BD%D0%BE%D0%BC+%D0%BE%D0%BA%D0%BD%D0%B5;Python+%2B+Ollama+%2B+PySide6;%D0%9B%D0%BE%D0%BA%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9+AI-%D1%87%D0%B0%D1%82)
+
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Python](https://img.shields.io/badge/python-3.10+-yellow)
+![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
+
+</div>
+
+![Views](https://dynamic-repo-badges.vercel.app/svg/count/7/Repository%20Views/NeoLauncher-)
+
+![GitHub Streak](https://streak-stats.demolab.com?user=Sbeuvadyarik67&theme=dark&hide_border=true)
 
 **NeoBrain Launcher** — центральная панель управления для запуска всех проектов NeoBrain в одном окне.  
 Включает NeoBrain AI Chat, NeoReceipt, NeoSpace OS и другие утилиты.
+
+---
+
+## 📸 Скриншот
+
+![NeoBrain Launcher](https://github.com/user-attachments/assets/4b336725-26f3-4757-a9f5-ba946d54c279)
+
+*4 проекта в одном окне — NeoBrain, NeoSpace OS, Why Does This Exist?, NeoReceipt.*
 
 ---
 
@@ -13,7 +36,7 @@
 2. Распакуй в любую папку
 3. Запусти `NeoLauncher.exe`
 
-> **Требования:** [Python 3.10+](https://www.python.org/downloads/) (отметь галочку *Add Python to PATH*) и [Ollama](https://ollama.com/) — для NeoBrain AI.
+> **Требования:** [Python 3.10+](https://www.python.org/downloads/) и [Ollama](https://ollama.com/) — для NeoBrain AI.
 
 ---
 
@@ -131,7 +154,24 @@ ollama pull llama3.2:3b
 
 ## 🛠️ Технологии
 
-Python 3.10+ · PySide6 · Tkinter · Ollama · ReportLab · PyInstaller
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/PySide6-41CD52?style=for-the-badge&logo=qt&logoColor=white" />
+  <img src="https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white" />
+  <img src="https://img.shields.io/badge/Tkinter-FF6F00?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/ReportLab-FF0000?style=for-the-badge&logo=adobe-acrobat-reader&logoColor=white" />
+  <img src="https://img.shields.io/badge/PyInstaller-FFD43B?style=for-the-badge&logo=python&logoColor=black" />
+</p>
+
+---
+
+## 💖 Поддержать проект
+
+Если проект полезен:
+
+- ⭐ Поставь **звезду** на GitHub — это мотивирует!
+- 🐛 Нашёл баг? [Открой Issue](https://github.com/Sbeuvadyarik67/NeoLauncher-/issues/new/choose)
+- 💡 Есть идея? [Предложи фичу](https://github.com/Sbeuvadyarik67/NeoLauncher-/issues/new/choose)
 
 ---
 
