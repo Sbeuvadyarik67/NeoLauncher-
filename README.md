@@ -4,7 +4,7 @@
 
 ![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=22&duration=3000&pause=1000&color=00D4FF&center=true&vCenter=true&width=600&lines=AI-%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D1%8B+%D0%B2+%D0%BE%D0%B4%D0%BD%D0%BE%D0%BC+%D0%BE%D0%BA%D0%BD%D0%B5;Python+%2B+Ollama+%2B+PySide6;%D0%9B%D0%BE%D0%BA%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9+AI-%D1%87%D0%B0%D1%82)
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.10+-yellow)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
@@ -22,17 +22,18 @@
 
 ## 📸 Скриншот
 
-![NeoBrain Launcher](https://github.com/user-attachments/assets/4b336725-26f3-4757-a9f5-ba946d54c279)
+<img width="1916" height="1040" alt="image" src="https://github.com/user-attachments/assets/40024b37-1401-414f-95cd-9d8f26efc9e3" />
 
-*4 проекта в одном окне — NeoBrain, NeoSpace OS, Why Does This Exist?, NeoReceipt.*
+
+*5 проектов в одном окне — NeoBrain, Brain Clicker, NeoSpace OS, Why Does This Exist?, NeoReceipt.*
 
 ---
 
 ## 📥 Скачать
 
-**Последняя версия:** [**NeoLauncher v2.0.0**](https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/latest)
+**Последняя версия:** [**NeoLauncher v2.1.0**](https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/latest)
 
-1. Скачай `NeoLauncher_v2.0.zip`
+1. Скачай `NeoLauncher_v2.1.0.zip`
 2. Распакуй в любую папку
 3. Запусти `NeoLauncher.exe`
 
@@ -48,6 +49,7 @@
 - 📄 NeoReceipt — генератор чеков с живым предпросмотром
 - 🖥️ NeoSpace OS — виртуальная среда для экспериментов
 - 🔄 Exe не надо пересобирать при обновлении `.py`-файлов
+- 🎮 Brain Clicker — кликер с мозгами, тенями и подарками
 
 ---
 
@@ -143,6 +145,30 @@ ollama pull llama3.2:3b
 
 ---
 
+
+## 🎮 Brain Clicker
+
+Кликер с мозгами. Кликай → копи → лови тени → собирай подарки.
+
+<img width="1280" height="623" alt="Brain Clicker" src="https://github.com/user-attachments/assets/f7be1140-8def-4982-b653-7f752b029b31" />
+
+
+- 🧠 **3 фигуры тени** — кто они? Найди сам 👀
+- 🎁 **Уникальные подарки** от каждой фигуры
+- 🤫 **Скрытая механика** — есть шанс получить кое-что особенное (1% удачи)
+- 💤 **Оффлайн-прогресс** — работаю, пока тебя нет
+- 🌙 **Возвращайся** — и узнаешь, что накопилось
+
+**Как играть:**
+
+1. Открой лаунчер → `Brain Clicker` → `▶ ЗАПУСТИТЬ`
+2. Кликай по мозгу 🧠
+3. Жди тень — раз в 30 минут
+4. Найди все 3 фигуры
+5. Проверь, что даёт каждая
+
+*Есть один сюрприз, который ты не ожидаешь 🏆*
+
 ## ❓ FAQ
 
 **Лаунчер пишет «Нет проектов»?**  
@@ -153,6 +179,10 @@ ollama pull llama3.2:3b
 
 **Как обновить проект?**  
 Замени `.py`-файл в `projects/`. Exe пересобирать **не нужно**.
+
+**Как запустить Brain Clicker?**  
+Через лаунчер: открой `NeoLauncher.exe` → карточка `Brain Clicker` → `▶ ЗАПУСТИТЬ`.  
+Игра откроется в браузере (HTML + JS).
 
 ---
 
@@ -169,7 +199,7 @@ ollama pull llama3.2:3b
 
 ---
 
-## 💖 Поддержать проект
+
 
 Если проект полезен:
 
