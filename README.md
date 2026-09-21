@@ -2,12 +2,13 @@
 
 # 🧠 NeoBrain Launcher
 
-![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=22&duration=3000&pause=1000&color=00D4FF&center=true&vCenter=true&width=600&lines=AI-%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D1%8B+%D0%B2+%D0%BE%D0%B4%D0%BD%D0%BE%D0%BC+%D0%BE%D0%BA%D0%BD%D0%B5;Python+%2B+Ollama+%2B+PySide6;%D0%9B%D0%BE%D0%BA%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9+AI-%D1%87%D0%B0%D1%82)
+![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=22&duration=3000&pause=1000&color=00D4FF&center=true&vCenter=true&width=600&lines=6+%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82%D0%BE%D0%B2+%D0%B2+%D0%BE%D0%B4%D0%BD%D0%BE%D0%BC+%D0%BE%D0%BA%D0%BD%D0%B5;Python+%2B+Ollama+%2B+PySide6;%D0%9B%D0%BE%D0%BA%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9+AI+%D0%B8+%D1%83%D1%87%D1%91%D1%82)
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.10+-yellow)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
 
 </div>
 
@@ -16,24 +17,127 @@
 ![GitHub Streak](https://streak-stats.demolab.com?user=Sbeuvadyarik67&theme=dark&hide_border=true)
 
 **NeoBrain Launcher** — центральная панель управления для запуска всех проектов NeoBrain в одном окне.  
-Включает NeoBrain AI Chat, NeoReceipt, NeoSpace OS и другие утилиты.
+Включает **6 проектов**: AI-чат, генератор чеков, виртуальную ОС, учёт товаров и другие утилиты.
 
 ---
 
 ## 📸 Скриншот
 
-<img width="1916" height="1040" alt="image" src="https://github.com/user-attachments/assets/40024b37-1401-414f-95cd-9d8f26efc9e3" />
+<div align="center">
 
+<img width="1280" height="694" alt="launcher_v0.2" src="https://github.com/user-attachments/assets/be893965-fb1a-4706-a6ae-1dd40fb7511c" />
 
-*5 проектов в одном окне — NeoBrain, Brain Clicker, NeoSpace OS, Why Does This Exist?, NeoReceipt.*
+*6 проектов в одном окне — NeoBrain, Brain Clicker, NeoSpace OS, Why Does This Exist?, NeoReceipt и **NeoTracker***
+
+</div>
+
+---
+
+## 🚀 Проекты
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🧠 NeoBrain AI Chat v7.4
+Локальный AI-чат с персонажами через **Ollama**.
+
+- 🎭 Персонажи (имя, пол, характер)
+- ⚡ Потоковый режим + остановка
+- 🌐 Русский / English
+- 🎨 10 тем, 5 стилей
+
+</td>
+<td width="50%" valign="top">
+
+### 📦 NeoTracker v0.1 ⭐ NEW
+Простая программа учёта товаров для малого бизнеса.
+
+- 📁 Категории и товары
+- 🔍 Поиск
+- 📊 Экспорт в Excel
+- 🌙 Тёмная / светлая темы
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🧾 NeoReceipt 2.0
+Генератор чеков с Live Preview.
+
+- 📊 Мульти-товары
+- 👁️ Живой предпросмотр
+- 💾 Шаблоны
+- 🔍 История
+
+</td>
+<td width="50%" valign="top">
+
+### 🖥️ NeoSpace OS
+Виртуальная среда для экспериментов.
+
+- 🚀 Виртуальные пространства
+- 🎨 Кастомизация
+- 🧪 Эксперименты
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🌀 Why Does This Exist?
+Интерактивная панель с эффектами.
+
+- 🎨 12 спецрежимов
+- 🧘 Антистресс-эффекты
+- ⚡ Оптимизация
+
+</td>
+<td width="50%" valign="top">
+
+### 🎮 Brain Clicker
+Кликер с мозгами.
+
+- 🧠 3 фигуры тени
+- 🎁 Уникальные подарки
+- 💤 Оффлайн-прогресс
+
+</td>
+</tr>
+</table>
+
+---
+
+## 📦 NeoTracker — подробнее
+
+<div align="center">
+
+<img src="assets/screenshots/neotracker_categories.jpg" width="90%" alt="NeoTracker — Категории" />
+
+<img src="assets/screenshots/neotracker_products.jpg" width="90%" alt="NeoTracker — Товары" />
+
+</div>
+
+**Инди-проект.** Лёгкая программа для учёта товаров на складе. Простой интерфейс, локальное хранение, без облаков и подписок.
+
+**Возможности:**
+- ✅ Категории и товары
+- ✅ Поиск по названию
+- ✅ Экспорт в Excel (сводный отчёт + по категориям)
+- ✅ Тёмная и светлая темы
+- ✅ Локальное хранение (SQLite)
+- ✅ Сборка в `.exe`
+
+**Стек:** Python, PySide6, SQLite, openpyxl
 
 ---
 
 ## 📥 Скачать
 
-**Последняя версия:** [**NeoLauncher v2.1.0**](https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/latest)
+**Последняя версия:** [**NeoLauncher v2.2.0**](https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/latest)
 
-1. Скачай `NeoLauncher_v2.1.0.zip`
+1. Скачай `NeoLauncher_v2.2.0.zip`
 2. Распакуй в любую папку
 3. Запусти `NeoLauncher.exe`
 
@@ -44,12 +148,15 @@
 ## ✨ Особенности
 
 - 🚀 Быстрый запуск проектов одним кликом
-- 🎨 10 тем и 5 стилей интерфейса
-- 🧠 NeoBrain AI — локальный чат с персонажами и потоковым режимом
-- 📄 NeoReceipt — генератор чеков с живым предпросмотром
-- 🖥️ NeoSpace OS — виртуальная среда для экспериментов
+- 🎨 **Карусель + сетка** — два режима отображения
+- 🖱️ Плавный hover: карточка приподнимается
+- ⚡ Скролл колёсиком + стрелками
+- 🧠 NeoBrain AI — локальный чат с персонажами
+- 📦 **NeoTracker** — учёт товаров для малого бизнеса
+- 📄 NeoReceipt — генератор чеков
+- 🖥️ NeoSpace OS — виртуальная среда
 - 🔄 Exe не надо пересобирать при обновлении `.py`-файлов
-- 🎮 Brain Clicker — кликер с мозгами, тенями и подарками
+- 🎮 Brain Clicker — кликер с мозгами
 
 ---
 
@@ -84,29 +191,32 @@ pyinstaller NeoLauncher.spec
 ```
 NeoLauncher/
 ├── launcher.py              # Лаунчер
+├── ui_theme.py              # Визуальная тема (Glass Tiles)
 ├── manifest.json            # Список проектов
 ├── icon.ico / icon.png      # Иконки
 ├── requirements.txt         # Зависимости
+├── assets/
+│   └── screenshots/         # Скриншоты
 └── projects/
     ├── neobrain.py          # 🧠 NeoBrain AI Chat
-    ├── neoreceipt.py        # 📄 NeoReceipt
+    ├── neoreceipt.py        # 🧾 NeoReceipt
     ├── neospace.py          # 🖥️ NeoSpace OS
     ├── whydoes.py           # 🌀 Why Does This Exist?
-    └── brain-clicker/       # 🎮 Brain Clicker
-        ├── index.html       # Игра (HTML)
-        ├── style.css        # Стили
-        └── script.js        # Логика
+    ├── brain-clicker/       # 🎮 Brain Clicker
+    │   ├── index.html
+    │   ├── style.css
+    │   └── script.js
+    └── NeoTracker/          # 📦 NeoTracker
+        └── NeoTracker.exe
 ```
 
 ---
 
-## 🧠 NeoBrain AI Chat v7.4
+## 🧠 NeoBrain AI Chat
 
 Локальный AI-чат с персонажами.
 
-**Возможности:**
-
-- 🎭 Персонажи с именем, полом, характером (с учётом рода: он/она)
+- 🎭 Персонажи с именем, полом, характером (учёт рода: он/она)
 - ⚡ Потоковый режим (можно отключить)
 - ⏹ Кнопка остановки генерации
 - 🌐 Русский / English
@@ -123,52 +233,6 @@ ollama pull llama3.2:3b
 
 ---
 
-## 📄 NeoReceipt 2.0
-
-Генератор чеков с Live Preview.
-
-- 📊 Мульти-товарные чеки
-- 👁️ Живой предпросмотр
-- 💾 Сохранение шаблонов
-- 🔍 Поиск по истории
-- 🎨 Выбор стиля оформления
-
----
-
-## 🖥️ NeoSpace OS
-
-Виртуальная среда для экспериментов.
-
-- 🚀 Запуск виртуальных пространств
-- 🎨 Кастомизация окружения
-- 🧪 Экспериментальные модули
-
----
-
-
-## 🎮 Brain Clicker
-
-Кликер с мозгами. Кликай → копи → лови тени → собирай подарки.
-
-<img width="1280" height="623" alt="Brain Clicker" src="https://github.com/user-attachments/assets/f7be1140-8def-4982-b653-7f752b029b31" />
-
-
-- 🧠 **3 фигуры тени** — кто они? Найди сам 👀
-- 🎁 **Уникальные подарки** от каждой фигуры
-- 🤫 **Скрытая механика** — есть шанс получить кое-что особенное (1% удачи)
-- 💤 **Оффлайн-прогресс** — работаю, пока тебя нет
-- 🌙 **Возвращайся** — и узнаешь, что накопилось
-
-**Как играть:**
-
-1. Открой лаунчер → `Brain Clicker` → `▶ ЗАПУСТИТЬ`
-2. Кликай по мозгу 🧠
-3. Жди тень — раз в 30 минут
-4. Найди все 3 фигуры
-5. Проверь, что даёт каждая
-
-*Есть один сюрприз, который ты не ожидаешь 🏆*
-
 ## ❓ FAQ
 
 **Лаунчер пишет «Нет проектов»?**  
@@ -184,6 +248,9 @@ ollama pull llama3.2:3b
 Через лаунчер: открой `NeoLauncher.exe` → карточка `Brain Clicker` → `▶ ЗАПУСТИТЬ`.  
 Игра откроется в браузере (HTML + JS).
 
+**Как запустить NeoTracker?**  
+Через лаунчер: `NeoLauncher.exe` → карточка `NeoTracker` → `▶ ЗАПУСТИТЬ`.
+
 ---
 
 ## 🛠️ Технологии
@@ -193,13 +260,14 @@ ollama pull llama3.2:3b
   <img src="https://img.shields.io/badge/PySide6-41CD52?style=for-the-badge&logo=qt&logoColor=white" />
   <img src="https://img.shields.io/badge/Ollama-000000?style=for-the-badge&logo=ollama&logoColor=white" />
   <img src="https://img.shields.io/badge/Tkinter-FF6F00?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
   <img src="https://img.shields.io/badge/ReportLab-FF0000?style=for-the-badge&logo=adobe-acrobat-reader&logoColor=white" />
   <img src="https://img.shields.io/badge/PyInstaller-FFD43B?style=for-the-badge&logo=python&logoColor=black" />
 </p>
 
 ---
 
-
+## ⭐ Поддержать проект
 
 Если проект полезен:
 
