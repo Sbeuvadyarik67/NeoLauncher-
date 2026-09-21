@@ -72,6 +72,24 @@
       "type": "python",
       "launches": 0,
       "favorite": false
+    },
+    "neotracker": {
+      "name": "📦 NeoTracker v0.1",
+      "version": "0.1.0",
+      "path": "projects/NeoTracker/NeoTracker.exe",
+      "icon": "📦",
+      "color": "#58a6ff",
+      "description": "Инди-проект. Учёт товаров для малого бизнеса. Простой интерфейс, локальное хранение, экспорт в Excel",
+      "tags": [
+        "Учёт",
+        "Склад",
+        "Excel",
+        "GUI",
+        "Бизнес"
+      ],
+      "type": "exe",
+      "launches": 0,
+      "favorite": false
     }
   }
 }
