@@ -34,6 +34,7 @@ projects/NeoTracker/data/
 projects/NeoTracker/exports/
 projects/NeoTracker/__pycache__/
 projects/neobrain_settings.json
+projects/neospace_settings.json
 
 # Локальные настройки лаунчера
 launcher_settings.json
