@@ -63,3 +63,15 @@ def sample_product(test_db, sample_category):
         no_stock=False,
     )
     return prod_id
+
+
+@pytest.fixture
+def export_dir(tmp_path, monkeypatch):
+    """
+    Создаёт временную папку для экспорта и подменяет её в core.export.
+    """
+    from core import export
+    test_exports = tmp_path / "exports"
+    test_exports.mkdir()
+    monkeypatch.setattr(export, "_get_export_dir", lambda: str(test_exports))
+    return test_exports
