@@ -12,41 +12,34 @@ env/
 ENV/
 
 # ============================================================
+# PYTEST
+# ============================================================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ============================================================
 # PYINSTALLER / СБОРКИ
 # ============================================================
 build/
 dist/
 *.spec
-
-# Игнорируем .exe в сборках (но не везде)
 build/**/*.exe
 dist/**/*.exe
 
 # ============================================================
-# ЛОКАЛЬНЫЕ ДАННЫЕ И НАСТРОЙКИ
+# ЛОКАЛЬНЫЕ ДАННЫЕ ПРОЕКТОВ
 # ============================================================
-launcher_settings.json
-/data/
-/exports/
-
-# NeoTracker
 projects/NeoTracker/data/
 projects/NeoTracker/exports/
-projects/NeoTracker/build/
-projects/NeoTracker/dist/
 projects/NeoTracker/__pycache__/
-
-# NeoBrain
 projects/neobrain_settings.json
-receipts/
-characters/
-logs/
-Modelfile*.txt
-last_run.txt
-slang_dict.json
+
+# Локальные настройки лаунчера
+launcher_settings.json
 
 # ============================================================
-# ФАЙЛЫ, НЕ НУЖНЫЕ В РЕПО
+# ЛОКАЛЬНЫЕ НАСТРОЙКИ И БАЗЫ
 # ============================================================
 *.pdf
 *.db
@@ -74,11 +67,3 @@ desktop.ini
 .vscode/
 .idea/
 *.sublime-*
-
-# ============================================================
-# КЕШИ
-# ============================================================
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.cache/
