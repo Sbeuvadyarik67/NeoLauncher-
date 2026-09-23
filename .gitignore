@@ -70,3 +70,5 @@ desktop.ini
 *.sublime-*
 *.exe
 !dist/NeoLauncher.exe
+
+*_backup.py
