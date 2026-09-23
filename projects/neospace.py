@@ -9,6 +9,7 @@ import time
 import subprocess
 import threading
 import requests
+import webbrowser
 
 # ИМПОРТ ИГР
 from games import Minesweeper, Snake, Catcher
@@ -30,9 +31,12 @@ except ImportError:
 # ===================================================
 # ЗАГРУЗКА НАСТРОЕК
 # ===================================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SETTINGS_PATH = os.path.join(BASE_DIR, "neospace_settings.json")
+
 def load_settings():
     try:
-        with open("neospace_settings.json", 'r', encoding='utf-8') as f:
+        with open(SETTINGS_PATH, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
         return {"os": "windows", "hz": 60, "browser_mode": "internal", "theme": "neon", "wallpaper": ""}
@@ -56,320 +60,173 @@ def get_theme_colors(theme_name):
     themes = {
         # ===== СЕРЬЁЗНЫЕ ТЕМЫ =====
         "classic": {
-            "bg": "#0f172a",
-            "bg_light": "#1e293b",
-            "fg": "#f1f5f9",
-            "fg_secondary": "#94a3b8",
-            "accent": "#60a5fa",
-            "taskbar": "#0f172a",
-            "taskbar_hover": "#1e293b",
-            "button_close": "#ef4444",
-            "button_min": "#f59e0b",
-            "button_max": "#22c55e",
-            "window_bg": "#0f172a",
-            "window_fg": "#f1f5f9",
-            "resize_color": "#1e293b",
-            "entry_bg": "#1e293b",
-            "entry_fg": "#f1f5f9",
+            "bg": "#0f172a", "bg_light": "#1e293b", "fg": "#f1f5f9",
+            "fg_secondary": "#94a3b8", "accent": "#60a5fa",
+            "taskbar": "#0f172a", "taskbar_hover": "#1e293b",
+            "button_close": "#ef4444", "button_min": "#f59e0b", "button_max": "#22c55e",
+            "window_bg": "#0f172a", "window_fg": "#f1f5f9",
+            "resize_color": "#1e293b", "entry_bg": "#1e293b", "entry_fg": "#f1f5f9",
             "category": "serious"
         },
         "corporate": {
-            "bg": "#1a1a1a",
-            "bg_light": "#2d2d2d",
-            "fg": "#e8e8e8",
-            "fg_secondary": "#aaaaaa",
-            "accent": "#4a90d9",
-            "taskbar": "#1a1a1a",
-            "taskbar_hover": "#2d2d2d",
-            "button_close": "#e74c3c",
-            "button_min": "#f39c12",
-            "button_max": "#2ecc71",
-            "window_bg": "#1a1a1a",
-            "window_fg": "#e8e8e8",
-            "resize_color": "#2d2d2d",
-            "entry_bg": "#2d2d2d",
-            "entry_fg": "#e8e8e8",
+            "bg": "#1a1a1a", "bg_light": "#2d2d2d", "fg": "#e8e8e8",
+            "fg_secondary": "#aaaaaa", "accent": "#4a90d9",
+            "taskbar": "#1a1a1a", "taskbar_hover": "#2d2d2d",
+            "button_close": "#e74c3c", "button_min": "#f39c12", "button_max": "#2ecc71",
+            "window_bg": "#1a1a1a", "window_fg": "#e8e8e8",
+            "resize_color": "#2d2d2d", "entry_bg": "#2d2d2d", "entry_fg": "#e8e8e8",
             "category": "serious"
         },
         "minimal": {
-            "bg": "#1a1a1a",
-            "bg_light": "#2a2a2a",
-            "fg": "#f0f0f0",
-            "fg_secondary": "#aaaaaa",
-            "accent": "#888888",
-            "taskbar": "#1a1a1a",
-            "taskbar_hover": "#2a2a2a",
-            "button_close": "#888888",
-            "button_min": "#888888",
-            "button_max": "#888888",
-            "window_bg": "#1a1a1a",
-            "window_fg": "#f0f0f0",
-            "resize_color": "#2a2a2a",
-            "entry_bg": "#2a2a2a",
-            "entry_fg": "#f0f0f0",
+            "bg": "#1a1a1a", "bg_light": "#2a2a2a", "fg": "#f0f0f0",
+            "fg_secondary": "#aaaaaa", "accent": "#888888",
+            "taskbar": "#1a1a1a", "taskbar_hover": "#2a2a2a",
+            "button_close": "#888888", "button_min": "#888888", "button_max": "#888888",
+            "window_bg": "#1a1a1a", "window_fg": "#f0f0f0",
+            "resize_color": "#2a2a2a", "entry_bg": "#2a2a2a", "entry_fg": "#f0f0f0",
             "category": "serious"
         },
         "office": {
-            "bg": "#f0f0f0",
-            "bg_light": "#e0e0e0",
-            "fg": "#1a1a1a",
-            "fg_secondary": "#555555",
-            "accent": "#2b5797",
-            "taskbar": "#e8e8e8",
-            "taskbar_hover": "#d0d0d0",
-            "button_close": "#e74c3c",
-            "button_min": "#f39c12",
-            "button_max": "#2ecc71",
-            "window_bg": "#f0f0f0",
-            "window_fg": "#1a1a1a",
-            "resize_color": "#d0d0d0",
-            "entry_bg": "#ffffff",
-            "entry_fg": "#1a1a1a",
+            "bg": "#f0f0f0", "bg_light": "#e0e0e0", "fg": "#1a1a1a",
+            "fg_secondary": "#555555", "accent": "#2b5797",
+            "taskbar": "#e8e8e8", "taskbar_hover": "#d0d0d0",
+            "button_close": "#e74c3c", "button_min": "#f39c12", "button_max": "#2ecc71",
+            "window_bg": "#f0f0f0", "window_fg": "#1a1a1a",
+            "resize_color": "#d0d0d0", "entry_bg": "#ffffff", "entry_fg": "#1a1a1a",
             "category": "serious"
         },
         "dark_pro": {
-            "bg": "#0a0a0f",
-            "bg_light": "#16161f",
-            "fg": "#d4d4e0",
-            "fg_secondary": "#8888aa",
-            "accent": "#818cf8",
-            "taskbar": "#0a0a0f",
-            "taskbar_hover": "#16161f",
-            "button_close": "#ff4757",
-            "button_min": "#ffa502",
-            "button_max": "#2ed573",
-            "window_bg": "#0a0a0f",
-            "window_fg": "#d4d4e0",
-            "resize_color": "#16161f",
-            "entry_bg": "#16161f",
-            "entry_fg": "#d4d4e0",
+            "bg": "#0a0a0f", "bg_light": "#16161f", "fg": "#d4d4e0",
+            "fg_secondary": "#8888aa", "accent": "#818cf8",
+            "taskbar": "#0a0a0f", "taskbar_hover": "#16161f",
+            "button_close": "#ff4757", "button_min": "#ffa502", "button_max": "#2ed573",
+            "window_bg": "#0a0a0f", "window_fg": "#d4d4e0",
+            "resize_color": "#16161f", "entry_bg": "#16161f", "entry_fg": "#d4d4e0",
             "category": "serious"
         },
-        
         # ===== КРАСИВЫЕ ТЕМЫ =====
         "neon": {
-            "bg": "#0a0e1a",
-            "bg_light": "#161f3a",
-            "fg": "#e0f0ff",
-            "fg_secondary": "#88bbdd",
-            "accent": "#00d4ff",
-            "taskbar": "#0a0e1a",
-            "taskbar_hover": "#161f3a",
-            "button_close": "#ff6b6b",
-            "button_min": "#ffbd2e",
-            "button_max": "#28c840",
-            "window_bg": "#0a0e1a",
-            "window_fg": "#e0f0ff",
-            "resize_color": "#161f3a",
-            "entry_bg": "#161f3a",
-            "entry_fg": "#e0f0ff",
+            "bg": "#0a0e1a", "bg_light": "#161f3a", "fg": "#e0f0ff",
+            "fg_secondary": "#88bbdd", "accent": "#00d4ff",
+            "taskbar": "#0a0e1a", "taskbar_hover": "#161f3a",
+            "button_close": "#ff6b6b", "button_min": "#ffbd2e", "button_max": "#28c840",
+            "window_bg": "#0a0e1a", "window_fg": "#e0f0ff",
+            "resize_color": "#161f3a", "entry_bg": "#161f3a", "entry_fg": "#e0f0ff",
             "category": "beautiful"
         },
         "cyber": {
-            "bg": "#0d0a1a",
-            "bg_light": "#1a0a2e",
-            "fg": "#f0ccff",
-            "fg_secondary": "#cc88ff",
-            "accent": "#ff44ff",
-            "taskbar": "#0d0a1a",
-            "taskbar_hover": "#1a0a2e",
-            "button_close": "#ff3366",
-            "button_min": "#ffcc00",
-            "button_max": "#00ffcc",
-            "window_bg": "#0d0a1a",
-            "window_fg": "#f0ccff",
-            "resize_color": "#1a0a2e",
-            "entry_bg": "#1a0a2e",
-            "entry_fg": "#f0ccff",
+            "bg": "#0d0a1a", "bg_light": "#1a0a2e", "fg": "#f0ccff",
+            "fg_secondary": "#cc88ff", "accent": "#ff44ff",
+            "taskbar": "#0d0a1a", "taskbar_hover": "#1a0a2e",
+            "button_close": "#ff3366", "button_min": "#ffcc00", "button_max": "#00ffcc",
+            "window_bg": "#0d0a1a", "window_fg": "#f0ccff",
+            "resize_color": "#1a0a2e", "entry_bg": "#1a0a2e", "entry_fg": "#f0ccff",
             "category": "beautiful"
         },
         "matrix": {
-            "bg": "#0a0f0a",
-            "bg_light": "#0f1f0f",
-            "fg": "#88ff88",
-            "fg_secondary": "#44dd44",
-            "accent": "#44ff44",
-            "taskbar": "#0a0f0a",
-            "taskbar_hover": "#0f1f0f",
-            "button_close": "#ff3333",
-            "button_min": "#ffff33",
-            "button_max": "#33ff33",
-            "window_bg": "#0a0f0a",
-            "window_fg": "#88ff88",
-            "resize_color": "#0f1f0f",
-            "entry_bg": "#0f1f0f",
-            "entry_fg": "#88ff88",
+            "bg": "#0a0f0a", "bg_light": "#0f1f0f", "fg": "#88ff88",
+            "fg_secondary": "#44dd44", "accent": "#44ff44",
+            "taskbar": "#0a0f0a", "taskbar_hover": "#0f1f0f",
+            "button_close": "#ff3333", "button_min": "#ffff33", "button_max": "#33ff33",
+            "window_bg": "#0a0f0a", "window_fg": "#88ff88",
+            "resize_color": "#0f1f0f", "entry_bg": "#0f1f0f", "entry_fg": "#88ff88",
             "category": "beautiful"
         },
         "ocean": {
-            "bg": "#0a1a2a",
-            "bg_light": "#0f2a3f",
-            "fg": "#bbeeff",
-            "fg_secondary": "#66bbdd",
-            "accent": "#44ccff",
-            "taskbar": "#0a1a2a",
-            "taskbar_hover": "#0f2a3f",
-            "button_close": "#ff6b6b",
-            "button_min": "#ffbd2e",
-            "button_max": "#28c840",
-            "window_bg": "#0a1a2a",
-            "window_fg": "#bbeeff",
-            "resize_color": "#0f2a3f",
-            "entry_bg": "#0f2a3f",
-            "entry_fg": "#bbeeff",
+            "bg": "#0a1a2a", "bg_light": "#0f2a3f", "fg": "#bbeeff",
+            "fg_secondary": "#66bbdd", "accent": "#44ccff",
+            "taskbar": "#0a1a2a", "taskbar_hover": "#0f2a3f",
+            "button_close": "#ff6b6b", "button_min": "#ffbd2e", "button_max": "#28c840",
+            "window_bg": "#0a1a2a", "window_fg": "#bbeeff",
+            "resize_color": "#0f2a3f", "entry_bg": "#0f2a3f", "entry_fg": "#bbeeff",
             "category": "beautiful"
         },
         "sunset": {
-            "bg": "#1a0a0a",
-            "bg_light": "#2a1515",
-            "fg": "#ffccaa",
-            "fg_secondary": "#ff9966",
-            "accent": "#ff7744",
-            "taskbar": "#1a0a0a",
-            "taskbar_hover": "#2a1515",
-            "button_close": "#ff4444",
-            "button_min": "#ffaa44",
-            "button_max": "#44ff88",
-            "window_bg": "#1a0a0a",
-            "window_fg": "#ffccaa",
-            "resize_color": "#2a1515",
-            "entry_bg": "#2a1515",
-            "entry_fg": "#ffccaa",
+            "bg": "#1a0a0a", "bg_light": "#2a1515", "fg": "#ffccaa",
+            "fg_secondary": "#ff9966", "accent": "#ff7744",
+            "taskbar": "#1a0a0a", "taskbar_hover": "#2a1515",
+            "button_close": "#ff4444", "button_min": "#ffaa44", "button_max": "#44ff88",
+            "window_bg": "#1a0a0a", "window_fg": "#ffccaa",
+            "resize_color": "#2a1515", "entry_bg": "#2a1515", "entry_fg": "#ffccaa",
             "category": "beautiful"
         },
         "cosmos": {
-            "bg": "#05050f",
-            "bg_light": "#0f0f20",
-            "fg": "#ddaaff",
-            "fg_secondary": "#9955dd",
-            "accent": "#aa44ff",
-            "taskbar": "#05050f",
-            "taskbar_hover": "#0f0f20",
-            "button_close": "#ff4488",
-            "button_min": "#ffcc44",
-            "button_max": "#44ffcc",
-            "window_bg": "#05050f",
-            "window_fg": "#ddaaff",
-            "resize_color": "#0f0f20",
-            "entry_bg": "#0f0f20",
-            "entry_fg": "#ddaaff",
+            "bg": "#05050f", "bg_light": "#0f0f20", "fg": "#ddaaff",
+            "fg_secondary": "#9955dd", "accent": "#aa44ff",
+            "taskbar": "#05050f", "taskbar_hover": "#0f0f20",
+            "button_close": "#ff4488", "button_min": "#ffcc44", "button_max": "#44ffcc",
+            "window_bg": "#05050f", "window_fg": "#ddaaff",
+            "resize_color": "#0f0f20", "entry_bg": "#0f0f20", "entry_fg": "#ddaaff",
             "category": "beautiful"
         },
         "lava": {
-            "bg": "#1a0a05",
-            "bg_light": "#2a150a",
-            "fg": "#ffbb99",
-            "fg_secondary": "#ff7744",
-            "accent": "#ff5533",
-            "taskbar": "#1a0a05",
-            "taskbar_hover": "#2a150a",
-            "button_close": "#ff2222",
-            "button_min": "#ff8822",
-            "button_max": "#22ff88",
-            "window_bg": "#1a0a05",
-            "window_fg": "#ffbb99",
-            "resize_color": "#2a150a",
-            "entry_bg": "#2a150a",
-            "entry_fg": "#ffbb99",
+            "bg": "#1a0a05", "bg_light": "#2a150a", "fg": "#ffbb99",
+            "fg_secondary": "#ff7744", "accent": "#ff5533",
+            "taskbar": "#1a0a05", "taskbar_hover": "#2a150a",
+            "button_close": "#ff2222", "button_min": "#ff8822", "button_max": "#22ff88",
+            "window_bg": "#1a0a05", "window_fg": "#ffbb99",
+            "resize_color": "#2a150a", "entry_bg": "#2a150a", "entry_fg": "#ffbb99",
             "category": "beautiful"
         },
         "gold": {
-            "bg": "#1a1a0a",
-            "bg_light": "#2a2a15",
-            "fg": "#ffdd99",
-            "fg_secondary": "#ddbb66",
-            "accent": "#ffcc44",
-            "taskbar": "#1a1a0a",
-            "taskbar_hover": "#2a2a15",
-            "button_close": "#ff4444",
-            "button_min": "#ffaa44",
-            "button_max": "#44ffaa",
-            "window_bg": "#1a1a0a",
-            "window_fg": "#ffdd99",
-            "resize_color": "#2a2a15",
-            "entry_bg": "#2a2a15",
-            "entry_fg": "#ffdd99",
+            "bg": "#1a1a0a", "bg_light": "#2a2a15", "fg": "#ffdd99",
+            "fg_secondary": "#ddbb66", "accent": "#ffcc44",
+            "taskbar": "#1a1a0a", "taskbar_hover": "#2a2a15",
+            "button_close": "#ff4444", "button_min": "#ffaa44", "button_max": "#44ffaa",
+            "window_bg": "#1a1a0a", "window_fg": "#ffdd99",
+            "resize_color": "#2a2a15", "entry_bg": "#2a2a15", "entry_fg": "#ffdd99",
             "category": "beautiful"
         },
         "cherry": {
-            "bg": "#1a0a12",
-            "bg_light": "#2a0a1a",
-            "fg": "#ffbbdd",
-            "fg_secondary": "#ff7799",
-            "accent": "#ff44aa",
-            "taskbar": "#1a0a12",
-            "taskbar_hover": "#2a0a1a",
-            "button_close": "#ff2244",
-            "button_min": "#ff8844",
-            "button_max": "#44ff88",
-            "window_bg": "#1a0a12",
-            "window_fg": "#ffbbdd",
-            "resize_color": "#2a0a1a",
-            "entry_bg": "#2a0a1a",
-            "entry_fg": "#ffbbdd",
+            "bg": "#1a0a12", "bg_light": "#2a0a1a", "fg": "#ffbbdd",
+            "fg_secondary": "#ff7799", "accent": "#ff44aa",
+            "taskbar": "#1a0a12", "taskbar_hover": "#2a0a1a",
+            "button_close": "#ff2244", "button_min": "#ff8844", "button_max": "#44ff88",
+            "window_bg": "#1a0a12", "window_fg": "#ffbbdd",
+            "resize_color": "#2a0a1a", "entry_bg": "#2a0a1a", "entry_fg": "#ffbbdd",
             "category": "beautiful"
         },
         "emerald": {
-            "bg": "#0a1a0a",
-            "bg_light": "#0f2a15",
-            "fg": "#88ffbb",
-            "fg_secondary": "#44dd88",
-            "accent": "#44ff88",
-            "taskbar": "#0a1a0a",
-            "taskbar_hover": "#0f2a15",
-            "button_close": "#ff4466",
-            "button_min": "#ffcc44",
-            "button_max": "#44ffcc",
-            "window_bg": "#0a1a0a",
-            "window_fg": "#88ffbb",
-            "resize_color": "#0f2a15",
-            "entry_bg": "#0f2a15",
-            "entry_fg": "#88ffbb",
+            "bg": "#0a1a0a", "bg_light": "#0f2a15", "fg": "#88ffbb",
+            "fg_secondary": "#44dd88", "accent": "#44ff88",
+            "taskbar": "#0a1a0a", "taskbar_hover": "#0f2a15",
+            "button_close": "#ff4466", "button_min": "#ffcc44", "button_max": "#44ffcc",
+            "window_bg": "#0a1a0a", "window_fg": "#88ffbb",
+            "resize_color": "#0f2a15", "entry_bg": "#0f2a15", "entry_fg": "#88ffbb",
             "category": "beautiful"
         }
     }
-    
     return themes.get(theme_name, themes["neon"])
 
+
 def get_theme_category(theme_name):
-    """Возвращает категорию темы: 'serious' или 'beautiful'"""
     theme = get_theme_colors(theme_name)
     return theme.get("category", "beautiful")
 
+
 def get_serious_themes():
-    """Возвращает список серьёзных тем"""
     return ["classic", "corporate", "minimal", "office", "dark_pro"]
 
+
 def get_beautiful_themes():
-    """Возвращает список красивых тем"""
     return ["neon", "cyber", "matrix", "ocean", "sunset", "cosmos", "lava", "gold", "cherry", "emerald"]
 
+
 def get_theme_display_name(theme_name):
-    """Возвращает отображаемое имя темы"""
     names = {
-        "classic": "🏛️ Classic",
-        "corporate": "💼 Corporate",
-        "minimal": "⬜ Minimal",
-        "office": "📋 Office",
-        "dark_pro": "🖥️ Dark Pro",
-        "neon": "💠 Neon",
-        "cyber": "🌀 Cyberpunk",
-        "matrix": "💚 Matrix",
-        "ocean": "🌊 Ocean",
-        "sunset": "🌅 Sunset",
-        "cosmos": "🌠 Cosmos",
-        "lava": "🌋 Lava",
-        "gold": "✨ Gold",
-        "cherry": "🌸 Cherry",
-        "emerald": "💎 Emerald",
+        "classic": "🏛️ Classic", "corporate": "💼 Corporate", "minimal": "⬜ Minimal",
+        "office": "📋 Office", "dark_pro": "🖥️ Dark Pro", "neon": "💠 Neon",
+        "cyber": "🌀 Cyberpunk", "matrix": "💚 Matrix", "ocean": "🌊 Ocean",
+        "sunset": "🌅 Sunset", "cosmos": "🌠 Cosmos", "lava": "🌋 Lava",
+        "gold": "✨ Gold", "cherry": "🌸 Cherry", "emerald": "💎 Emerald",
     }
     return names.get(theme_name, theme_name)
+
 
 # ===================================================
 # ДИАЛОГ С ПРОГРЕСС-БАРОМ ДЛЯ СМЕНЫ ТЕМЫ
 # ===================================================
 class ThemeProgressDialog:
-    """Диалог с прогресс-баром для смены темы"""
     def __init__(self, parent, theme_name, callback):
         self.parent = parent
         self.theme_name = theme_name
@@ -381,26 +238,20 @@ class ThemeProgressDialog:
         self.window.resizable(False, False)
         self.window.overrideredirect(True)
         
-        # Центрируем
         self.window.update_idletasks()
         x = (parent.root.winfo_width() - 400) // 2
         y = (parent.root.winfo_height() - 130) // 2
         self.window.geometry(f"+{x}+{y}")
         
-        # Заголовок
-        self.label = tk.Label(self.window, text=f"🔄 Применение темы: {get_theme_display_name(theme_name)}", 
-                              font=("Segoe UI", 12),
-                              fg=COLORS["fg"], bg=COLORS["window_bg"])
+        self.label = tk.Label(self.window, text=f"🔄 Применение темы: {get_theme_display_name(theme_name)}",
+                              font=("Segoe UI", 12), fg=COLORS["fg"], bg=COLORS["window_bg"])
         self.label.pack(pady=10)
         
-        # Прогресс-бар
         self.progress = ttk.Progressbar(self.window, length=350, mode='determinate')
         self.progress.pack(pady=10)
         
-        # Проценты
-        self.percent_label = tk.Label(self.window, text="0%", 
-                                      font=("Segoe UI", 10),
-                                      fg=COLORS["fg"], bg=COLORS["window_bg"])
+        self.percent_label = tk.Label(self.window, text="0%",
+                                      font=("Segoe UI", 10), fg=COLORS["fg"], bg=COLORS["window_bg"])
         self.percent_label.pack()
         
         self.step = 0
@@ -408,7 +259,6 @@ class ThemeProgressDialog:
         self._update_progress()
     
     def _update_progress(self):
-        """Обновляет прогресс-бар"""
         if self.step <= self.max_steps:
             percent = int((self.step / self.max_steps) * 100)
             self.progress['value'] = percent
@@ -421,6 +271,7 @@ class ThemeProgressDialog:
             if self.callback:
                 self.callback()
 
+
 # ===================================================
 # ФУНКЦИИ РАБОТЫ С БРАУЗЕРОМ
 # ===================================================
@@ -430,50 +281,51 @@ def get_browser_path():
         return path
     return ""
 
+
 def set_browser_path(path):
     if path and os.path.exists(path):
         SETTINGS["browser_path"] = os.path.normpath(path)
         try:
-            with open("neospace_settings.json", 'w', encoding='utf-8') as f:
+            with open(SETTINGS_PATH, 'w', encoding='utf-8') as f:
                 json.dump(SETTINGS, f, indent=2)
             return True
         except:
             return False
     return False
 
+
 def get_browser_mode():
     return SETTINGS.get("browser_mode", "internal")
+
 
 def set_browser_mode(mode):
     SETTINGS["browser_mode"] = mode
     try:
-        with open("neospace_settings.json", 'w', encoding='utf-8') as f:
+        with open(SETTINGS_PATH, 'w', encoding='utf-8') as f:
             json.dump(SETTINGS, f, indent=2)
         return True
     except:
         return False
 
+
 def copy_browser_to_virtual(src_path):
-    """Копирует браузер в виртуальную папку"""
     try:
         browser_dir = os.path.join(VIRTUAL_PATH, "Browser")
         os.makedirs(browser_dir, exist_ok=True)
-        
         filename = os.path.basename(src_path)
         dst_path = os.path.join(browser_dir, filename)
         
-        # Если файл уже есть — проверяем, нужна ли замена
         if os.path.exists(dst_path):
-            if not messagebox.askyesno("Браузер уже есть", 
+            if not messagebox.askyesno("Браузер уже есть",
                                        f"Браузер '{filename}' уже скопирован.\nЗаменить?"):
                 return dst_path
         
-        # Копируем с прогрессом
         shutil.copy2(src_path, dst_path)
         return dst_path
     except Exception as e:
         messagebox.showerror("Ошибка", f"Не удалось скопировать браузер:\n{str(e)}")
         return None
+
 
 # ===================================================
 # ФУНКЦИИ РАБОТЫ С ТЕМАМИ И ОБОЯМИ
@@ -481,26 +333,30 @@ def copy_browser_to_virtual(src_path):
 def get_current_theme():
     return SETTINGS.get("theme", "neon")
 
+
 def set_theme(theme_name):
     SETTINGS["theme"] = theme_name
     try:
-        with open("neospace_settings.json", 'w', encoding='utf-8') as f:
+        with open(SETTINGS_PATH, 'w', encoding='utf-8') as f:
             json.dump(SETTINGS, f, indent=2)
         return True
     except:
         return False
+
 
 def get_wallpaper_path():
     return SETTINGS.get("wallpaper", "")
 
+
 def set_wallpaper_path(path):
     SETTINGS["wallpaper"] = path
     try:
-        with open("neospace_settings.json", 'w', encoding='utf-8') as f:
+        with open(SETTINGS_PATH, 'w', encoding='utf-8') as f:
             json.dump(SETTINGS, f, indent=2)
         return True
     except:
         return False
+
 
 # ===================================================
 # ФУНКЦИИ ИМПОРТА/ЭКСПОРТА
@@ -516,6 +372,7 @@ def get_file_size(path):
             except:
                 pass
     return total
+
 
 def copy_with_progress(src, dst, progress_callback=None):
     if os.path.isfile(src):
@@ -536,6 +393,7 @@ def copy_with_progress(src, dst, progress_callback=None):
         shutil.copytree(src, dst)
         return True
 
+
 class ProgressDialog:
     def __init__(self, parent, title="Выполняется..."):
         self.parent = parent
@@ -551,16 +409,14 @@ class ProgressDialog:
         y = (parent.root.winfo_height() - 120) // 2 if hasattr(parent, 'root') else 200
         self.window.geometry(f"+{x}+{y}")
         
-        self.label = tk.Label(self.window, text="Подготовка...", 
-                              font=("Segoe UI", 11),
+        self.label = tk.Label(self.window, text="Подготовка...", font=("Segoe UI", 11),
                               fg=COLORS["fg"], bg=COLORS["window_bg"])
         self.label.pack(pady=10)
         
         self.progress = ttk.Progressbar(self.window, length=350, mode='determinate')
         self.progress.pack(pady=10)
         
-        self.percent_label = tk.Label(self.window, text="0%", 
-                                      font=("Segoe UI", 10),
+        self.percent_label = tk.Label(self.window, text="0%", font=("Segoe UI", 10),
                                       fg=COLORS["fg"], bg=COLORS["window_bg"])
         self.percent_label.pack()
         
@@ -585,25 +441,22 @@ class ProgressDialog:
     def close(self):
         self.window.destroy()
 
+
 def import_file(parent, status_callback=None):
-    path = filedialog.askopenfilename(
-        title="Выберите файл для импорта",
-        filetypes=[("Все файлы", "*.*")]
-    )
-    
+    path = filedialog.askopenfilename(title="Выберите файл для импорта",
+                                      filetypes=[("Все файлы", "*.*")])
     if not path:
         return
     
     filename = os.path.basename(path)
     dst_path = os.path.join(VIRTUAL_PATH, filename)
     if os.path.exists(dst_path):
-        if not messagebox.askyesno("Файл существует", 
+        if not messagebox.askyesno("Файл существует",
                                    f"Файл '{filename}' уже существует.\nЗаменить?"):
             return
     
     dialog = ProgressDialog(parent, f"📥 Импорт: {filename}")
     dialog.set_text(f"Копирование: {filename}")
-    
     total_size = get_file_size(path)
     
     def copy_thread():
@@ -634,25 +487,21 @@ def import_file(parent, status_callback=None):
     thread.daemon = True
     thread.start()
 
+
 def export_file(parent, filename, status_callback=None):
     src_path = os.path.join(VIRTUAL_PATH, filename)
-    
     if not os.path.exists(src_path):
         messagebox.showerror("Ошибка", f"Файл '{filename}' не найден!")
         return
     
-    dst_path = filedialog.asksaveasfilename(
-        title=f"Сохранить '{filename}' как...",
-        initialfile=filename,
-        filetypes=[("Все файлы", "*.*")]
-    )
-    
+    dst_path = filedialog.asksaveasfilename(title=f"Сохранить '{filename}' как...",
+                                            initialfile=filename,
+                                            filetypes=[("Все файлы", "*.*")])
     if not dst_path:
         return
     
     dialog = ProgressDialog(parent, f"📤 Экспорт: {filename}")
     dialog.set_text(f"Копирование: {filename}")
-    
     total_size = get_file_size(src_path)
     
     def copy_thread():
@@ -683,13 +532,12 @@ def export_file(parent, filename, status_callback=None):
     thread.daemon = True
     thread.start()
 
+
 # ===================================================
 # НАСТРОЙКИ ОС (ЗАВИСЯТ ОТ ТЕМЫ)
 # ===================================================
 def update_colors(theme_name):
-    """Обновляет глобальные цвета в зависимости от темы"""
     global COLORS, BUTTONS_SIDE, START_TEXT, OS_ICON, OS_NAME, FULLSCREEN_EXIT_TEXT
-    
     theme_colors = get_theme_colors(theme_name)
     
     COLORS = {
@@ -710,6 +558,7 @@ def update_colors(theme_name):
         "entry_fg": theme_colors.get("entry_fg", theme_colors["fg"]),
     }
 
+
 # Загружаем начальные цвета
 update_colors(THEME)
 
@@ -726,6 +575,7 @@ else:
     OS_NAME = "macOS"
     FULLSCREEN_EXIT_TEXT = "⛶ Выйти из полноэкранного режима"
 
+
 # ===================================================
 # ВИРТУАЛЬНАЯ ГЕРЦОВКА
 # ===================================================
@@ -736,7 +586,7 @@ class VirtualHz:
         self.frame_count = 0
         self.last_time = time.time()
         self.fps = 0
-        
+    
     def get_delay(self):
         return self.delay
     
@@ -749,11 +599,11 @@ class VirtualHz:
             self.last_time = current_time
         return self.fps
 
+
 # ===================================================
 # КЛАСС ДЛЯ РЕСАЙЗА ГЛАВНОГО ОКНА
 # ===================================================
 class ResizeGrip:
-    """Класс для управления ресайзом главного окна"""
     def __init__(self, parent):
         self.parent = parent
         self.root = parent.root
@@ -761,24 +611,19 @@ class ResizeGrip:
         self._create_resize_zones()
     
     def _create_resize_zones(self):
-        """Создаёт зоны для ресайза по краям и углам"""
         resize_size = 8
         corner_size = 15
         
-        # Края
         for side, cursor, direction in [
             ("bottom", "sb_v_double_arrow", 's'),
             ("top", "sb_v_double_arrow", 'n'),
             ("right", "sb_h_double_arrow", 'e'),
             ("left", "sb_h_double_arrow", 'w')
         ]:
-            frame = tk.Frame(
-                self.root, 
-                bg=COLORS["resize_color"],
-                height=resize_size if side in ["bottom", "top"] else None,
-                width=resize_size if side in ["right", "left"] else None,
-                cursor=cursor
-            )
+            frame = tk.Frame(self.root, bg=COLORS["resize_color"],
+                             height=resize_size if side in ["bottom", "top"] else None,
+                             width=resize_size if side in ["right", "left"] else None,
+                             cursor=cursor)
             if side in ["bottom", "top"]:
                 frame.pack(side=side, fill="x")
             else:
@@ -789,7 +634,6 @@ class ResizeGrip:
             frame.bind("<ButtonRelease-1>", self._stop_resize)
             self._resize_zones.append(frame)
         
-        # Углы
         corners = [
             ("se", 1.0, 1.0, "size_nw_se"),
             ("sw", 0.0, 1.0, "size_ne_sw"),
@@ -797,13 +641,8 @@ class ResizeGrip:
             ("nw", 0.0, 0.0, "size_nw_se")
         ]
         for anchor, relx, rely, cursor in corners:
-            corner = tk.Frame(
-                self.root, 
-                bg=COLORS["resize_color"],
-                width=corner_size, 
-                height=corner_size, 
-                cursor=cursor
-            )
+            corner = tk.Frame(self.root, bg=COLORS["resize_color"],
+                              width=corner_size, height=corner_size, cursor=cursor)
             corner.place(relx=relx, rely=rely, anchor=anchor)
             corner.bind("<Button-1>", lambda e, a=anchor: self._start_resize(e, a))
             corner.bind("<B1-Motion>", self._on_resize)
@@ -832,7 +671,6 @@ class ResizeGrip:
         new_w = self._resize_width
         new_h = self._resize_height
         
-        # Минимальные размеры
         min_w = 800
         min_h = 600
         
@@ -847,7 +685,6 @@ class ResizeGrip:
             new_h = max(min_h, self._resize_height - dy)
             new_y = self._resize_y_win + dy
         
-        # Для углов
         if direction in ['ne', 'nw', 'se', 'sw']:
             if 'e' in direction:
                 new_w = max(min_w, self._resize_width + dx)
@@ -868,9 +705,9 @@ class ResizeGrip:
             del self._resize_direction
     
     def _on_resize_wallpaper(self, e):
-        """Обновляет обои при ресайзе"""
         if hasattr(self.parent, '_apply_wallpaper'):
             self.parent._apply_wallpaper(get_wallpaper_path())
+
 
 # ===================================================
 # ВНУТРЕННЕЕ ОКНО С АНИМАЦИЕЙ
@@ -892,9 +729,7 @@ class InternalWindow:
         self.window.configure(bg=COLORS["window_bg"])
         self.window.overrideredirect(True)
         
-        # Анимация появления (fade-in)
         self.window.attributes('-alpha', 0.0)
-        
         self._create_title_bar(title)
         
         self.content_frame = tk.Frame(self.window, bg=COLORS["window_bg"])
@@ -915,13 +750,10 @@ class InternalWindow:
             self._create_resize_zones()
         
         parent.windows.append(self)
-        
         self.window.bind("<Configure>", self._on_configure)
         
         self._rel_x = self.window.winfo_x() - parent.root.winfo_x()
         self._rel_y = self.window.winfo_y() - parent.root.winfo_y()
-        
-        # Запускаем анимацию появления
         self.fade_in()
     
     def _create_title_bar(self, title):
@@ -934,24 +766,23 @@ class InternalWindow:
         
         if BUTTONS_SIDE == "left":
             for color, cmd in [(COLORS["button_close"], self.close),
-                              (COLORS["button_min"], self.minimize),
-                              (COLORS["button_max"], self.maximize)]:
+                               (COLORS["button_min"], self.minimize),
+                               (COLORS["button_max"], self.maximize)]:
                 btn = tk.Button(btn_frame, text="●", command=cmd,
-                               bg=COLORS["taskbar"], fg=color, relief="flat",
-                               font=("Segoe UI", 14))
+                                bg=COLORS["taskbar"], fg=color, relief="flat",
+                                font=("Segoe UI", 14))
                 btn.pack(side="left", padx=4)
         else:
             for text, cmd, color in [("—", self.minimize, COLORS["fg"]),
-                                    ("□", self.maximize, COLORS["fg"]),
-                                    ("✖", self.close, COLORS["button_close"])]:
+                                     ("□", self.maximize, COLORS["fg"]),
+                                     ("✖", self.close, COLORS["button_close"])]:
                 btn = tk.Button(btn_frame, text=text, command=cmd,
-                               bg=COLORS["taskbar"], fg=color, relief="flat",
-                               font=("Segoe UI", 12))
+                                bg=COLORS["taskbar"], fg=color, relief="flat",
+                                font=("Segoe UI", 12))
                 btn.pack(side="left", padx=5)
         
-        tk.Label(self.title_bar, text=title, 
-                font=("Segoe UI", 10, "bold"),
-                fg=COLORS["fg"], bg=COLORS["taskbar"]).pack(side="left", padx=15)
+        tk.Label(self.title_bar, text=title, font=("Segoe UI", 10, "bold"),
+                 fg=COLORS["fg"], bg=COLORS["taskbar"]).pack(side="left", padx=15)
     
     def _create_resize_zones(self):
         resize_size = 8
@@ -961,10 +792,10 @@ class InternalWindow:
                                         ("top", "sb_v_double_arrow", 'n'),
                                         ("right", "sb_h_double_arrow", 'e'),
                                         ("left", "sb_h_double_arrow", 'w')]:
-            frame = tk.Frame(self.window, bg=COLORS["resize_color"], 
-                           height=resize_size if side in ["bottom", "top"] else None,
-                           width=resize_size if side in ["right", "left"] else None,
-                           cursor=cursor)
+            frame = tk.Frame(self.window, bg=COLORS["resize_color"],
+                             height=resize_size if side in ["bottom", "top"] else None,
+                             width=resize_size if side in ["right", "left"] else None,
+                             cursor=cursor)
             if side in ["bottom", "top"]:
                 frame.pack(side=side, fill="x")
             else:
@@ -980,21 +811,19 @@ class InternalWindow:
             ("nw", 0.0, 0.0, "size_nw_se")
         ]
         for anchor, relx, rely, cursor in corners:
-            corner = tk.Frame(self.window, bg=COLORS["resize_color"], 
-                            width=corner_size, height=corner_size, cursor=cursor)
+            corner = tk.Frame(self.window, bg=COLORS["resize_color"],
+                              width=corner_size, height=corner_size, cursor=cursor)
             corner.place(relx=relx, rely=rely, anchor=anchor)
             corner.bind("<Button-1>", lambda e, a=anchor: self.start_resize(e, a))
             corner.bind("<B1-Motion>", self.on_resize)
             corner.bind("<ButtonRelease-1>", self.stop_resize)
     
-    # ---- АНИМАЦИЯ ПОЯВЛЕНИЯ ----
     def fade_in(self):
         alpha = self.window.attributes('-alpha')
         if alpha < 1.0:
             self.window.attributes('-alpha', min(1.0, alpha + 0.1))
             self.window.after(20, self.fade_in)
     
-    # ---- ПЕРЕМЕЩЕНИЕ ----
     def start_move(self, e):
         self.x, self.y = e.x, e.y
     
@@ -1015,21 +844,16 @@ class InternalWindow:
         top_limit = parent_y
         bottom_limit = parent_y + parent_height - win_height - taskbar_height
         
-        if win_x < left_limit:
-            win_x = left_limit
-        if win_x > right_limit:
-            win_x = right_limit
-        if win_y < top_limit:
-            win_y = top_limit
-        if win_y > bottom_limit:
-            win_y = bottom_limit
+        if win_x < left_limit: win_x = left_limit
+        if win_x > right_limit: win_x = right_limit
+        if win_y < top_limit: win_y = top_limit
+        if win_y > bottom_limit: win_y = bottom_limit
         
         self.window.geometry(f"+{win_x}+{win_y}")
     
     def stop_move(self, e):
         pass
     
-    # ---- РЕСАЙЗ ----
     def start_resize(self, e, direction):
         self.resize_direction = direction
         self.resize_x = e.x_root
@@ -1119,10 +943,8 @@ class InternalWindow:
             win_w = self.window.winfo_width()
             win_h = self.window.winfo_height()
             
-            if win_x < parent_x:
-                win_x = parent_x
-            if win_y < parent_y:
-                win_y = parent_y
+            if win_x < parent_x: win_x = parent_x
+            if win_y < parent_y: win_y = parent_y
             if win_x + win_w > parent_x + parent_width:
                 win_x = parent_x + parent_width - win_w
             if win_y + win_h > parent_y + parent_height - taskbar_height:
@@ -1154,6 +976,7 @@ class InternalWindow:
     
     def get_content(self):
         return self.content_frame
+
 
 # ===================================================
 # ГЛАВНЫЙ КЛАСС ОС
@@ -1194,10 +1017,8 @@ class NeoSpaceOS:
         self._update_clock()
         
         self.resize_grip = ResizeGrip(self)
-        
         self.root.after(100, self._sync_windows)
         
-        # Применяем обои при старте
         if WALLPAPER_PATH and os.path.exists(WALLPAPER_PATH):
             self.root.after(200, lambda: self._apply_wallpaper(WALLPAPER_PATH))
         
@@ -1215,21 +1036,37 @@ class NeoSpaceOS:
         if not PIL_AVAILABLE:
             print("⚠️ Pillow не установлен. Обои не будут работать. Установите: pip install Pillow")
     
+    
     def _sync_windows(self):
         try:
             parent_x = self.root.winfo_x()
             parent_y = self.root.winfo_y()
-            
-            for window in self.windows:
-                try:
-                    if window.window.winfo_exists():
-                        new_x = parent_x + window._rel_x
-                        new_y = parent_y + window._rel_y
-                        window.window.geometry(f"+{new_x}+{new_y}")
-                except:
-                    pass
-        except:
-            pass
+        except tk.TclError:
+            return
+        
+        dead = []
+        for window in self.windows:
+            try:
+                if not window.window.winfo_exists():
+                    dead.append(window)
+                    continue
+                if not hasattr(window, '_rel_x'):
+                    continue
+                new_x = parent_x + window._rel_x
+                new_y = parent_y + window._rel_y
+                window.window.geometry(f"+{new_x}+{new_y}")
+            except tk.TclError:
+                dead.append(window)
+            except Exception:
+                pass
+        
+        # Убираем мёртвые окна
+        for w in dead:
+            try:
+                self.windows.remove(w)
+            except ValueError:
+                pass
+    
     
     def _build_ui(self):
         # === ЗАГОЛОВОК ===
@@ -1245,11 +1082,11 @@ class NeoSpaceOS:
         
         if BUTTONS_SIDE == "left":
             for color, cmd in [(COLORS["button_close"], self.close),
-                              (COLORS["button_min"], self.minimize),
-                              (COLORS["button_max"], self.toggle_fullscreen)]:
+                               (COLORS["button_min"], self.minimize),
+                               (COLORS["button_max"], self.toggle_fullscreen)]:
                 btn = tk.Button(btn_frame, text="●", command=cmd,
-                               bg=COLORS["taskbar"], fg=color, relief="flat",
-                               font=("Segoe UI", 16))
+                                bg=COLORS["taskbar"], fg=color, relief="flat",
+                                font=("Segoe UI", 16))
                 btn.pack(side="left", padx=4)
         else:
             btn_data = [
@@ -1259,17 +1096,15 @@ class NeoSpaceOS:
             ]
             for text, cmd, color in btn_data:
                 btn = tk.Button(btn_frame, text=text, command=cmd,
-                               bg=COLORS["taskbar"], fg=color, relief="flat",
-                               font=("Segoe UI", 14))
+                                bg=COLORS["taskbar"], fg=color, relief="flat",
+                                font=("Segoe UI", 14))
                 btn.pack(side="left", padx=6)
         
         title_text = f"🧠 NeoSpace OS — {OS_ICON} {OS_NAME} {HZ}Гц"
-        tk.Label(self.title_bar, text=title_text, 
-                font=("Segoe UI", 12, "bold"),
-                fg=COLORS["accent"], bg=COLORS["taskbar"]).pack(side="left", padx=20)
+        tk.Label(self.title_bar, text=title_text, font=("Segoe UI", 12, "bold"),
+                 fg=COLORS["accent"], bg=COLORS["taskbar"]).pack(side="left", padx=20)
         
-        self.clock_label = tk.Label(self.title_bar, text="00:00", 
-                                    font=("Segoe UI", 11),
+        self.clock_label = tk.Label(self.title_bar, text="00:00", font=("Segoe UI", 11),
                                     fg=COLORS["fg"], bg=COLORS["taskbar"])
         self.clock_label.pack(side="right", padx=20)
         
@@ -1285,52 +1120,42 @@ class NeoSpaceOS:
         self.task_bar.pack(side="bottom", fill="x")
         self.task_bar.pack_propagate(False)
         
-        start_btn = tk.Button(self.task_bar, text=START_TEXT, 
-                             command=self.show_start_menu,
-                             bg=COLORS["taskbar"], fg=COLORS["accent"],
-                             font=("Segoe UI", 11, "bold"),
-                             relief="flat", cursor="hand2")
+        start_btn = tk.Button(self.task_bar, text=START_TEXT, command=self.show_start_menu,
+                              bg=COLORS["taskbar"], fg=COLORS["accent"],
+                              font=("Segoe UI", 11, "bold"), relief="flat", cursor="hand2")
         start_btn.pack(side="left", padx=15, pady=8)
         
         for text, cmd in [("📁 Файлы", self.open_file_manager),
-                         ("🧠 AI", self.open_ai_chat),
-                         ("🌐 Интернет", self.open_browser),
-                         ("⚙️ Настройки", self.open_settings)]:
+                          ("🧠 AI", self.open_ai_chat),
+                          ("⚙️ Настройки", self.open_settings)]:
             btn = tk.Button(self.task_bar, text=text, command=cmd,
-                           bg=COLORS["taskbar"], fg=COLORS["fg"],
-                           font=("Segoe UI", 10), relief="flat", cursor="hand2")
+                            bg=COLORS["taskbar"], fg=COLORS["fg"],
+                            font=("Segoe UI", 10), relief="flat", cursor="hand2")
             btn.pack(side="left", padx=8, pady=8)
-            def on_enter(e, b=btn):
-                b.config(bg=COLORS["taskbar_hover"])
-            def on_leave(e, b=btn):
-                b.config(bg=COLORS["taskbar"])
+            
+            def on_enter(e, b=btn): b.config(bg=COLORS["taskbar_hover"])
+            def on_leave(e, b=btn): b.config(bg=COLORS["taskbar"])
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
         
-        self.exit_fullscreen_btn = tk.Button(
-            self.task_bar, 
-            text="⛶ Выйти из полноэкранного режима", 
-            command=self.toggle_fullscreen,
-            bg=COLORS["button_close"], 
-            fg="#fff",
-            font=("Segoe UI", 9, "bold"),
-            relief="flat", 
-            cursor="hand2"
-        )
+        self.exit_fullscreen_btn = tk.Button(self.task_bar, text="⛶ Выйти из полноэкранного режима",
+                                             command=self.toggle_fullscreen,
+                                             bg=COLORS["button_close"], fg="#fff",
+                                             font=("Segoe UI", 9, "bold"),
+                                             relief="flat", cursor="hand2")
         self.exit_fullscreen_btn.pack(side="left", padx=8, pady=8)
         self.exit_fullscreen_btn.config(state="disabled")
         
-        self.task_clock = tk.Label(self.task_bar, text="00:00", 
-                                   bg=COLORS["taskbar"], fg=COLORS["fg"],
-                                   font=("Segoe UI", 11))
+        self.task_clock = tk.Label(self.task_bar, text="00:00", bg=COLORS["taskbar"],
+                                   fg=COLORS["fg"], font=("Segoe UI", 11))
         self.task_clock.pack(side="right", padx=20)
         
-        self.status_label = tk.Label(self.task_bar, text=f"✅ {HZ} Гц | FPS: 0", 
-                                     bg=COLORS["taskbar"], fg=COLORS["fg"],
-                                     font=("Segoe UI", 10))
+        self.status_label = tk.Label(self.task_bar, text=f"✅ {HZ} Гц | FPS: 0",
+                                     bg=COLORS["taskbar"], fg=COLORS["fg"], font=("Segoe UI", 10))
         self.status_label.pack(side="right", padx=15)
         
         self._update_fps()
+    
     
     def _create_wallpaper(self):
         self.wallpaper = tk.Canvas(self.desktop, bg=COLORS["bg"], highlightthickness=0)
@@ -1338,34 +1163,28 @@ class NeoSpaceOS:
         self._on_resize_wallpaper(None)
         self.wallpaper.bind("<Configure>", self._on_resize_wallpaper)
     
+    
     def _on_resize_wallpaper(self, e):
         if hasattr(self, 'wallpaper') and self.wallpaper.winfo_exists():
             self.wallpaper.delete("all")
             width = self.root.winfo_width()
             height = self.root.winfo_height()
             
-            # Если есть обои — рисуем их, иначе — текст
             if WALLPAPER_PATH and os.path.exists(WALLPAPER_PATH):
                 self._apply_wallpaper(WALLPAPER_PATH)
             else:
-                self.wallpaper.create_text(
-                    width//2, height//2 - 150,
-                    text=f"🧠 NeoSpace OS", font=("Segoe UI", 52, "bold"),
-                    fill=COLORS["bg_light"], anchor="center"
-                )
-                self.wallpaper.create_text(
-                    width//2, height//2 - 70,
-                    text=f"{OS_ICON} {OS_NAME} • {HZ} Гц • {get_theme_display_name(get_current_theme())}", 
-                    font=("Segoe UI", 20),
-                    fill=COLORS["bg_light"], anchor="center"
-                )
+                self.wallpaper.create_text(width//2, height//2 - 150,
+                    text="🧠 NeoSpace OS", font=("Segoe UI", 52, "bold"),
+                    fill=COLORS["bg_light"], anchor="center")
+                self.wallpaper.create_text(width//2, height//2 - 70,
+                    text=f"{OS_ICON} {OS_NAME} • {HZ} Гц • {get_theme_display_name(get_current_theme())}",
+                    font=("Segoe UI", 20), fill=COLORS["bg_light"], anchor="center")
+    
     
     def _apply_wallpaper(self, path):
-        """Применяет обои из файла"""
         try:
             if not PIL_AVAILABLE:
                 return
-            
             img = Image.open(path)
             w = self.root.winfo_width()
             h = self.root.winfo_height()
@@ -1375,18 +1194,17 @@ class NeoSpaceOS:
                 self.wallpaper.create_image(0, 0, image=photo, anchor="nw")
                 self.wallpaper.image = photo
         except Exception as e:
-            self.wallpaper.create_text(
-                self.root.winfo_width()//2, self.root.winfo_height()//2,
+            self.wallpaper.create_text(self.root.winfo_width()//2, self.root.winfo_height()//2,
                 text=f"⚠️ Не удалось загрузить обои\n{str(e)}",
-                font=("Segoe UI", 16),
-                fill=COLORS["bg_light"], anchor="center"
-            )
+                font=("Segoe UI", 16), fill=COLORS["bg_light"], anchor="center")
+    
     
     def _update_fps(self):
         fps = self.vhz.update_fps()
         if self.status_label:
             self.status_label.config(text=f"✅ {HZ} Гц | FPS: {fps}")
         self.root.after(self.vhz.get_delay(), self._update_fps)
+    
     
     def _update_clock(self):
         now = datetime.now().strftime("%H:%M")
@@ -1400,52 +1218,40 @@ class NeoSpaceOS:
             self.date_widget.config(text=datetime.now().strftime("%A, %d %B %Y"))
         self.root.after(self.vhz.get_delay(), self._update_clock)
     
+    
     def _create_desktop_icons(self):
         icons = [
             ("📁 Мои файлы", self.open_file_manager, 60, 60),
             ("🧠 AI-помощник", self.open_ai_chat, 60, 200),
             ("⚙️ Настройки", self.open_settings, 60, 340),
-            ("🌐 Браузер", self.open_browser, 60, 480),
             ("⏻ Выключить", self.close, 60, 620),
         ]
         
         for text, cmd, x, y in icons:
             btn = tk.Button(self.desktop, text=text, command=cmd,
-                           bg=COLORS["bg"], fg=COLORS["fg"],
-                           font=("Segoe UI", 11), relief="flat",
-                           width=14, height=4, cursor="hand2")
+                            bg=COLORS["bg"], fg=COLORS["fg"],
+                            font=("Segoe UI", 11), relief="flat",
+                            width=14, height=4, cursor="hand2")
             btn.place(x=x, y=y)
             
-            def on_enter(e, b=btn):
-                b.config(bg=COLORS["bg_light"])
-            def on_leave(e, b=btn):
-                b.config(bg=COLORS["bg"])
+            def on_enter(e, b=btn): b.config(bg=COLORS["bg_light"])
+            def on_leave(e, b=btn): b.config(bg=COLORS["bg"])
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
         
-        # === ВИДЖЕТЫ (часы + дата) ===
         widget_x = self.root.winfo_width() - 280
         widget_y = 60
         
-        self.clock_widget = tk.Label(
-            self.desktop,
-            text=datetime.now().strftime("%H:%M"),
-            font=("Segoe UI", 48, "bold"),
-            bg=COLORS["bg"],
-            fg=COLORS["accent"]
-        )
+        self.clock_widget = tk.Label(self.desktop, text=datetime.now().strftime("%H:%M"),
+                                     font=("Segoe UI", 48, "bold"),
+                                     bg=COLORS["bg"], fg=COLORS["accent"])
         self.clock_widget.place(x=widget_x, y=widget_y)
         
-        self.date_widget = tk.Label(
-            self.desktop,
-            text=datetime.now().strftime("%A, %d %B %Y"),
-            font=("Segoe UI", 14),
-            bg=COLORS["bg"],
-            fg=COLORS["fg_secondary"]
-        )
+        self.date_widget = tk.Label(self.desktop, text=datetime.now().strftime("%A, %d %B %Y"),
+                                    font=("Segoe UI", 14),
+                                    bg=COLORS["bg"], fg=COLORS["fg_secondary"])
         self.date_widget.place(x=widget_x, y=widget_y + 70)
         
-        # Обновляем виджеты при изменении размера окна
         def update_widget_position(e):
             if self.clock_widget:
                 self.clock_widget.place(x=self.root.winfo_width() - 280, y=60)
@@ -1454,19 +1260,15 @@ class NeoSpaceOS:
         
         self.root.bind("<Configure>", update_widget_position)
     
+    
     # === УПРАВЛЕНИЕ ОКНОМ ===
     def start_move(self, e):
         self.x = e.x
         self.y = e.y
-        self.window_positions = []
         for window in self.windows:
             try:
                 if window.window.winfo_exists():
-                    self.window_positions.append({
-                        'window': window,
-                        'x': window.window.winfo_x(),
-                        'y': window.window.winfo_y()
-                    })
+                    pass
             except:
                 pass
     
@@ -1517,163 +1319,49 @@ class NeoSpaceOS:
             self.root.destroy()
             sys.exit(0)
     
-    # === ОБОИ (в настройках) ===
+    
+    # === ОБОИ ===
     def choose_wallpaper(self):
         if not PIL_AVAILABLE:
-            messagebox.showerror(
-                "Ошибка",
-                "Библиотека Pillow не установлена.\n"
-                "Установите: pip install Pillow"
-            )
+            messagebox.showerror("Ошибка",
+                "Библиотека Pillow не установлена.\nУстановите: pip install Pillow")
             return
         
-        path = filedialog.askopenfilename(
-            title="Выберите изображение для обоев",
-            filetypes=[("Изображения", "*.png *.jpg *.jpeg *.bmp *.gif *.ico")]
-        )
+        path = filedialog.askopenfilename(title="Выберите изображение для обоев",
+            filetypes=[("Изображения", "*.png *.jpg *.jpeg *.bmp *.gif *.ico")])
         if path:
             if set_wallpaper_path(path):
                 self._apply_wallpaper(path)
                 if self.status_label:
                     self.status_label.config(text=f"🖼️ Обои: {os.path.basename(path)}")
-                messagebox.showinfo("✅ Обои изменены", f"✅ Обои успешно установлены!\n\n{os.path.basename(path)}")
+                messagebox.showinfo("✅ Обои изменены",
+                    f"✅ Обои успешно установлены!\n\n{os.path.basename(path)}")
             else:
                 messagebox.showerror("Ошибка", "Не удалось сохранить путь к обоям")
     
-    # === МЕТОДЫ ДЛЯ БРАУЗЕРА ===
+    
+    # === БРАУЗЕР ===
     def open_browser(self):
         browser_path = get_browser_path()
         
-        if browser_path and os.path.exists(browser_path) and VIRTUAL_PATH in browser_path:
+        # Если режим "внутренний" — открываем встроенный браузер
+        if get_browser_mode() == "internal" and TKINTERWEB_AVAILABLE:
+            self.open_browser_internal()
+            return
+        
+        # Если путь к браузеру задан и существует — запускаем его
+        if browser_path and os.path.exists(browser_path):
             self.open_browser_external()
             return
         
-        if not browser_path or not os.path.exists(browser_path):
-            browser_dir = os.path.join(VIRTUAL_PATH, "Browser")
-            if os.path.exists(browser_dir):
-                for file in os.listdir(browser_dir):
-                    if file.endswith(".exe"):
-                        virtual_browser = os.path.join(browser_dir, file)
-                        if set_browser_path(virtual_browser):
-                            self.open_browser_external()
-                            return
-            
-            self.choose_browser()
-            return
-        
-        self.open_browser_external()
-
-    def open_browser_internal(self):
-        if not TKINTERWEB_AVAILABLE:
-            messagebox.showerror(
-                "Ошибка",
-                "Библиотека tkinterweb не установлена.\n"
-                "Установите: pip install tkinterweb"
-            )
-            return
-        
+        # Иначе — используем дефолтный браузер системы
         try:
-            win = InternalWindow(self, "🌐 Внутренний браузер", 900, 650)
-            content = win.get_content()
-            
-            nav_frame = tk.Frame(content, bg=COLORS["taskbar"], height=40)
-            nav_frame.pack(fill="x", side="top")
-            nav_frame.pack_propagate(False)
-            
-            url_entry = tk.Entry(nav_frame, bg=COLORS["bg_light"], fg=COLORS["fg"],
-                                 font=("Segoe UI", 11), relief="flat")
-            url_entry.pack(side="left", fill="x", expand=True, padx=5, pady=5)
-            url_entry.insert(0, "http://example.com")
-            
-            def load_page():
-                url = url_entry.get().strip()
-                if not url:
-                    return
-                if not url.startswith("http://") and not url.startswith("https://"):
-                    url = "http://" + url
-                try:
-                    browser.load_file(url)
-                    if self.status_label:
-                        self.status_label.config(text=f"🌐 Загружено: {url}")
-                except Exception as e:
-                    messagebox.showerror("Ошибка", f"Не удалось загрузить страницу:\n{str(e)}")
-            
-            btn_go = tk.Button(nav_frame, text="➤ Перейти", command=load_page,
-                              bg=COLORS["accent"], fg=COLORS["bg"],
-                              font=("Segoe UI", 10, "bold"), relief="flat")
-            btn_go.pack(side="left", padx=5)
-            
-            btn_home = tk.Button(nav_frame, text="🏠 Домой", 
-                                command=lambda: [url_entry.delete(0, tk.END), 
-                                                url_entry.insert(0, "http://example.com"), 
-                                                load_page()],
-                                bg=COLORS["bg_light"], fg=COLORS["fg"],
-                                font=("Segoe UI", 10), relief="flat")
-            btn_home.pack(side="left", padx=5)
-            
-            browser = HtmlFrame(content, messages_enabled=False)
-            browser.load_file("http://example.com")
-            browser.pack(fill="both", expand=True, padx=5, pady=5)
-            
-            url_entry.bind("<Return>", lambda e: load_page())
-            
+            webbrowser.open("https://www.google.com")
             if self.status_label:
-                self.status_label.config(text="🌐 Внутренний браузер запущен")
-                
+                self.status_label.config(text="🌐 Открыт браузер по умолчанию")
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось открыть внутренний браузер:\n{str(e)}")
-
-    def open_browser_external(self):
-        browser_path = get_browser_path()
-        
-        if not browser_path or not os.path.exists(browser_path):
-            self.choose_browser()
-            return
-        
-        try:
-            if OS_TYPE == "windows":
-                subprocess.Popen([browser_path], shell=False)
-            else:
-                subprocess.Popen(["open", browser_path])
-            
-            if self.status_label:
-                self.status_label.config(text=f"🌐 Браузер запущен: {os.path.basename(browser_path)}")
-        except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось запустить браузер:\n{str(e)}\n\n"
-                                          f"Путь: {browser_path}")
-
-    def choose_browser(self):
-        if OS_TYPE == "windows":
-            filetypes = [("Исполняемые файлы", "*.exe"), ("Все файлы", "*.*")]
-        else:
-            filetypes = [("Приложения", "*.app"), ("Все файлы", "*.*")]
-        
-        path = filedialog.askopenfilename(
-            title="🌐 Выберите ваш браузер",
-            filetypes=filetypes
-        )
-        
-        if not path:
-            return
-        
-        virtual_path = copy_browser_to_virtual(path)
-        
-        if virtual_path and os.path.exists(virtual_path):
-            if set_browser_path(virtual_path):
-                if self.status_label:
-                    self.status_label.config(text=f"✅ Браузер скопирован и сохранён: {os.path.basename(virtual_path)}")
-                messagebox.showinfo("✅ Успех", 
-                                   f"✅ Браузер скопирован!\n\n"
-                                   f"📁 Исходный: {path}\n"
-                                   f"📂 Виртуальный: {virtual_path}\n\n"
-                                   f"Теперь браузер будет работать внутри NeoSpace!")
-                
-                if messagebox.askyesno("🚀 Запуск", "Запустить браузер сейчас?"):
-                    self.open_browser_external()
-            else:
-                messagebox.showerror("Ошибка", "Не удалось сохранить настройки")
-        else:
-            messagebox.showerror("Ошибка", "Не удалось скопировать браузер")
+            messagebox.showerror("Ошибка", f"Не удалось открыть браузер:\n{str(e)}")
+    
     
     # === ПРИЛОЖЕНИЯ ===
     def open_file_manager(self):
@@ -1686,46 +1374,48 @@ class NeoSpaceOS:
         control_frame = tk.Frame(main_frame, bg=COLORS["window_bg"])
         control_frame.pack(fill="x", pady=(0, 10))
         
-        btn_export = tk.Button(control_frame, text="📤 Экспорт", 
-                              command=lambda: self._export_selected(listbox),
-                              bg=COLORS["bg_light"], fg=COLORS["fg"],
-                              font=("Segoe UI", 10), relief="flat")
-        btn_export.pack(side="left", padx=5)
-        
-        btn_import = tk.Button(control_frame, text="📥 Импорт", 
-                              command=lambda: import_file(self, self.update_status),
-                              bg=COLORS["bg_light"], fg=COLORS["fg"],
-                              font=("Segoe UI", 10), relief="flat")
-        btn_import.pack(side="left", padx=5)
-        
         listbox_frame = tk.Frame(main_frame, bg=COLORS["window_bg"])
         listbox_frame.pack(fill="both", expand=True)
         
         listbox = tk.Listbox(listbox_frame, bg=COLORS["bg_light"], fg=COLORS["fg"],
                              font=("Consolas", 11), relief="flat")
         listbox.pack(fill="both", expand=True)
+        
+        btn_export = tk.Button(control_frame, text="📤 Экспорт",
+                               command=lambda: self._export_selected(listbox),
+                               bg=COLORS["bg_light"], fg=COLORS["fg"],
+                               font=("Segoe UI", 10), relief="flat")
+        btn_export.pack(side="left", padx=5)
+        
+        btn_import = tk.Button(control_frame, text="📥 Импорт",
+                               command=lambda: import_file(self, self.update_status),
+                               bg=COLORS["bg_light"], fg=COLORS["fg"],
+                               font=("Segoe UI", 10), relief="flat")
+        btn_import.pack(side="left", padx=5)
+        
         self._refresh_list(listbox)
         
         btn_frame = tk.Frame(main_frame, bg=COLORS["window_bg"])
         btn_frame.pack(fill="x", pady=(10, 0))
         
-        btn_open = tk.Button(btn_frame, text="📋 Открыть", 
-                            command=lambda: self._open_selected(listbox),
-                            bg=COLORS["bg_light"], fg=COLORS["fg"],
-                            font=("Segoe UI", 10), relief="flat")
+        btn_open = tk.Button(btn_frame, text="📋 Открыть",
+                             command=lambda: self._open_selected(listbox),
+                             bg=COLORS["bg_light"], fg=COLORS["fg"],
+                             font=("Segoe UI", 10), relief="flat")
         btn_open.pack(side="left", padx=5)
         
-        btn_delete = tk.Button(btn_frame, text="🗑 Удалить", 
-                              command=lambda: self._delete_selected(listbox),
-                              bg=COLORS["bg_light"], fg=COLORS["fg"],
-                              font=("Segoe UI", 10), relief="flat")
-        btn_delete.pack(side="left", padx=5)
-        
-        btn_refresh = tk.Button(btn_frame, text="🔄 Обновить", 
-                               command=lambda: self._refresh_list(listbox),
+        btn_delete = tk.Button(btn_frame, text="🗑 Удалить",
+                               command=lambda: self._delete_selected(listbox),
                                bg=COLORS["bg_light"], fg=COLORS["fg"],
                                font=("Segoe UI", 10), relief="flat")
+        btn_delete.pack(side="left", padx=5)
+        
+        btn_refresh = tk.Button(btn_frame, text="🔄 Обновить",
+                                command=lambda: self._refresh_list(listbox),
+                                bg=COLORS["bg_light"], fg=COLORS["fg"],
+                                font=("Segoe UI", 10), relief="flat")
         btn_refresh.pack(side="left", padx=5)
+    
     
     def _export_selected(self, listbox):
         try:
@@ -1770,6 +1460,7 @@ class NeoSpaceOS:
         if self.status_label:
             self.status_label.config(text=text)
     
+    
     def open_ai_chat(self):
         win = InternalWindow(self, "🧠 AI-помощник", 650, 550)
         content = win.get_content()
@@ -1777,12 +1468,10 @@ class NeoSpaceOS:
         top_frame = tk.Frame(content, bg=COLORS["window_bg"])
         top_frame.pack(fill="x", padx=10, pady=5)
         
-        tk.Label(top_frame, text="🧠 Модель:", 
-                 bg=COLORS["window_bg"], fg=COLORS["fg"],
+        tk.Label(top_frame, text="🧠 Модель:", bg=COLORS["window_bg"], fg=COLORS["fg"],
                  font=("Segoe UI", 10)).pack(side="left", padx=(0, 5))
         
         model_var = tk.StringVar(value="⚡ Лёгкая (1.5B)")
-        
         model_options = [
             ("⚡ Лёгкая (1.5B)", "qwen2.5-coder:1.5b"),
             ("⚡ Средняя (3B)", "llama3.2:3b"),
@@ -1816,12 +1505,12 @@ class NeoSpaceOS:
                          font=("Segoe UI", 11), relief="flat")
         entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
         
-        status_label = tk.Label(content, text="✅ Готов к работе", 
+        status_label = tk.Label(content, text="✅ Готов к работе",
                                 bg=COLORS["window_bg"], fg=COLORS["fg_secondary"],
                                 font=("Segoe UI", 9))
         status_label.pack(pady=2)
         
-        clear_btn = tk.Button(input_frame, text="🗑 Очистить", 
+        clear_btn = tk.Button(input_frame, text="🗑 Очистить",
                               command=lambda: [chat_area.config(state="normal"),
                                                chat_area.delete(1.0, tk.END),
                                                chat_area.insert(tk.END, f"🤖: Чат очищен.\n🧠 Текущая модель: {model_menu.get()}\n\n"),
@@ -1854,19 +1543,15 @@ class NeoSpaceOS:
                         status_label.config(text="🔄 Запуск Ollama...", fg=COLORS["accent"])
                         try:
                             if sys.platform == "win32":
-                                subprocess.Popen(
-                                    ["ollama", "serve"],
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL,
-                                    creationflags=subprocess.CREATE_NO_WINDOW
-                                )
+                                subprocess.Popen(["ollama", "serve"],
+                                                 stdout=subprocess.DEVNULL,
+                                                 stderr=subprocess.DEVNULL,
+                                                 creationflags=subprocess.CREATE_NO_WINDOW)
                             else:
-                                subprocess.Popen(
-                                    ["ollama", "serve"],
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL,
-                                    start_new_session=True
-                                )
+                                subprocess.Popen(["ollama", "serve"],
+                                                 stdout=subprocess.DEVNULL,
+                                                 stderr=subprocess.DEVNULL,
+                                                 start_new_session=True)
                             time.sleep(3)
                         except:
                             pass
@@ -1880,23 +1565,15 @@ class NeoSpaceOS:
                     except:
                         pass
                     
-                    response = requests.post(
-                        "http://localhost:11434/api/generate",
-                        json={
-                            "model": model_id,
-                            "prompt": text,
-                            "stream": False,
-                            "temperature": 0.7
-                        },
-                        timeout=120
-                    )
+                    response = requests.post("http://localhost:11434/api/generate",
+                        json={"model": model_id, "prompt": text, "stream": False, "temperature": 0.7},
+                        timeout=120)
                     
                     if response.status_code == 200:
                         result = response.json()
                         answer = result.get("response", "Нет ответа")
                     else:
                         answer = f"Ошибка: {response.status_code}"
-                        
                 except Exception as e:
                     answer = f"❌ Ошибка: {str(e)}"
                 
@@ -1925,6 +1602,7 @@ class NeoSpaceOS:
         model_menu.bind("<<ComboboxSelected>>", on_model_change)
         entry.bind("<Return>", lambda e: send_message())
     
+    
     def open_settings(self):
         win = InternalWindow(self, "⚙️ Настройки", 650, 700, resizable=True)
         content = win.get_content()
@@ -1933,10 +1611,8 @@ class NeoSpaceOS:
         scrollbar = ttk.Scrollbar(content, orient="vertical", command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg=COLORS["window_bg"])
         
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        scrollable_frame.bind("<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
@@ -1955,9 +1631,9 @@ class NeoSpaceOS:
         
         _bind_mousewheel(scrollable_frame)
         
-        tk.Label(scrollable_frame, text="⚙️ Настройки системы", 
-                font=("Segoe UI", 16, "bold"),
-                fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=15)
+        tk.Label(scrollable_frame, text="⚙️ Настройки системы",
+                 font=("Segoe UI", 16, "bold"),
+                 fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=15)
         
         info_data = [
             f"🖥️ Оболочка: {OS_NAME}",
@@ -1973,39 +1649,31 @@ class NeoSpaceOS:
         info_data.append(f"📌 Режим браузера: {mode_text}")
         
         for text in info_data:
-            tk.Label(scrollable_frame, text=text, 
-                    font=("Segoe UI", 11),
-                    fg=COLORS["fg"], bg=COLORS["window_bg"]).pack(pady=4, anchor="w", padx=30)
+            tk.Label(scrollable_frame, text=text, font=("Segoe UI", 11),
+                     fg=COLORS["fg"], bg=COLORS["window_bg"]).pack(pady=4, anchor="w", padx=30)
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
         # === ОБОИ ===
-        tk.Label(scrollable_frame, text="🖼️ Обои", 
-                font=("Segoe UI", 12, "bold"),
-                fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=5, anchor="w", padx=30)
+        tk.Label(scrollable_frame, text="🖼️ Обои", font=("Segoe UI", 12, "bold"),
+                 fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=5, anchor="w", padx=30)
         
-        btn_wallpaper = tk.Button(
-            scrollable_frame,
-            text="📂 Выбрать изображение",
-            command=self.choose_wallpaper,
-            bg=COLORS["bg_light"],
-            fg=COLORS["fg"],
-            font=("Segoe UI", 10),
-            relief="flat"
-        )
+        btn_wallpaper = tk.Button(scrollable_frame, text="📂 Выбрать изображение",
+                                  command=self.choose_wallpaper,
+                                  bg=COLORS["bg_light"], fg=COLORS["fg"],
+                                  font=("Segoe UI", 10), relief="flat")
         btn_wallpaper.pack(pady=5, padx=30, anchor="w")
         
         if WALLPAPER_PATH:
-            tk.Label(scrollable_frame, text=f"📌 Текущие: {os.path.basename(WALLPAPER_PATH)}", 
-                    font=("Consolas", 9),
-                    fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=2, anchor="w", padx=30)
+            tk.Label(scrollable_frame, text=f"📌 Текущие: {os.path.basename(WALLPAPER_PATH)}",
+                     font=("Consolas", 9), fg=COLORS["fg_secondary"],
+                     bg=COLORS["window_bg"]).pack(pady=2, anchor="w", padx=30)
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
         # === ПУТЬ К БРАУЗЕРУ ===
-        tk.Label(scrollable_frame, text="🌐 Путь к браузеру:", 
-                font=("Segoe UI", 12, "bold"),
-                fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=5, anchor="w", padx=30)
+        tk.Label(scrollable_frame, text="🌐 Путь к браузеру:", font=("Segoe UI", 12, "bold"),
+                 fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=5, anchor="w", padx=30)
         
         path_frame = tk.Frame(scrollable_frame, bg=COLORS["window_bg"])
         path_frame.pack(fill="x", padx=30, pady=5)
@@ -2028,10 +1696,9 @@ class NeoSpaceOS:
             except:
                 messagebox.showwarning("Внимание", "Не удалось получить данные из буфера обмена")
         
-        btn_paste = tk.Button(path_frame, text="📋 Вставить", 
-                             command=paste_path,
-                             bg=COLORS["bg_light"], fg=COLORS["fg"],
-                             font=("Segoe UI", 10), relief="flat")
+        btn_paste = tk.Button(path_frame, text="📋 Вставить", command=paste_path,
+                              bg=COLORS["bg_light"], fg=COLORS["fg"],
+                              font=("Segoe UI", 10), relief="flat")
         btn_paste.pack(side="left", padx=5)
         
         def browse_path():
@@ -2040,11 +1707,7 @@ class NeoSpaceOS:
             else:
                 filetypes = [("Приложения", "*.app"), ("Все файлы", "*.*")]
             
-            path = filedialog.askopenfilename(
-                title="🌐 Выберите ваш браузер",
-                filetypes=filetypes
-            )
-            
+            path = filedialog.askopenfilename(title="🌐 Выберите ваш браузер", filetypes=filetypes)
             if path:
                 virtual_path = copy_browser_to_virtual(path)
                 if virtual_path:
@@ -2052,16 +1715,14 @@ class NeoSpaceOS:
                     if self.status_label:
                         self.status_label.config(text=f"📂 Браузер скопирован: {os.path.basename(virtual_path)}")
                     if set_browser_path(virtual_path):
-                        messagebox.showinfo("✅ Успех", 
-                                           f"✅ Браузер скопирован и сохранён!\n\n"
-                                           f"📂 Виртуальный путь: {virtual_path}")
+                        messagebox.showinfo("✅ Успех",
+                            f"✅ Браузер скопирован и сохранён!\n\n📂 Виртуальный путь: {virtual_path}")
                     else:
                         messagebox.showerror("Ошибка", "Не удалось сохранить настройки")
         
-        btn_browse = tk.Button(path_frame, text="📂 Обзор", 
-                              command=browse_path,
-                              bg=COLORS["bg_light"], fg=COLORS["fg"],
-                              font=("Segoe UI", 10), relief="flat")
+        btn_browse = tk.Button(path_frame, text="📂 Обзор", command=browse_path,
+                               bg=COLORS["bg_light"], fg=COLORS["fg"],
+                               font=("Segoe UI", 10), relief="flat")
         btn_browse.pack(side="left", padx=5)
         
         def save_path():
@@ -2076,17 +1737,16 @@ class NeoSpaceOS:
             else:
                 messagebox.showwarning("Внимание", "Укажите корректный путь к браузеру")
         
-        btn_save = tk.Button(path_frame, text="💾 Сохранить", 
-                            command=save_path,
-                            bg=COLORS["accent"], fg=COLORS["bg"],
-                            font=("Segoe UI", 10, "bold"), relief="flat")
+        btn_save = tk.Button(path_frame, text="💾 Сохранить", command=save_path,
+                             bg=COLORS["accent"], fg=COLORS["bg"],
+                             font=("Segoe UI", 10, "bold"), relief="flat")
         btn_save.pack(side="left", padx=5)
         
         current_path = get_browser_path()
         if current_path:
-            tk.Label(scrollable_frame, text=f"📌 Текущий путь: {current_path}", 
-                    font=("Consolas", 9),
-                    fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=2, anchor="w", padx=30)
+            tk.Label(scrollable_frame, text=f"📌 Текущий путь: {current_path}",
+                     font=("Consolas", 9), fg=COLORS["fg_secondary"],
+                     bg=COLORS["window_bg"]).pack(pady=2, anchor="w", padx=30)
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
@@ -2103,7 +1763,8 @@ class NeoSpaceOS:
                 return
             
             if set_browser_mode(new_mode):
-                messagebox.showinfo("✅ Режим изменён", f"Режим браузера: {'Внутренний' if new_mode == 'internal' else 'Внешний'}")
+                messagebox.showinfo("✅ Режим изменён",
+                    f"Режим браузера: {'Внутренний' if new_mode == 'internal' else 'Внешний'}")
                 win.close()
                 self.open_settings()
             else:
@@ -2113,21 +1774,19 @@ class NeoSpaceOS:
         if mode == "internal" and not TKINTERWEB_AVAILABLE:
             mode_btn_text = "❌ Внутренний недоступен"
         
-        tk.Button(btn_frame, text=mode_btn_text, 
-                 command=toggle_browser_mode,
-                 bg=COLORS["bg_light"], fg=COLORS["fg"],
-                 font=("Segoe UI", 10), relief="flat").pack(side="left", padx=5)
+        tk.Button(btn_frame, text=mode_btn_text, command=toggle_browser_mode,
+                  bg=COLORS["bg_light"], fg=COLORS["fg"],
+                  font=("Segoe UI", 10), relief="flat").pack(side="left", padx=5)
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
         # === ТЕМЫ ===
-        tk.Label(scrollable_frame, text="🎨 Выбор темы", 
-                font=("Segoe UI", 14, "bold"),
-                fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=5)
+        tk.Label(scrollable_frame, text="🎨 Выбор темы", font=("Segoe UI", 14, "bold"),
+                 fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=5)
         
-        tk.Label(scrollable_frame, text="━━━ 🏛️ Серьёзный стиль ━━━", 
-                font=("Segoe UI", 11),
-                fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
+        tk.Label(scrollable_frame, text="━━━ 🏛️ Серьёзный стиль ━━━",
+                 font=("Segoe UI", 11), fg=COLORS["fg_secondary"],
+                 bg=COLORS["window_bg"]).pack(pady=5)
         
         serious_frame = tk.Frame(scrollable_frame, bg=COLORS["window_bg"])
         serious_frame.pack(pady=5)
@@ -2136,15 +1795,15 @@ class NeoSpaceOS:
             display_name = get_theme_display_name(theme)
             is_active = theme == current_theme
             btn = tk.Button(serious_frame, text=display_name,
-                           command=lambda t=theme: self.change_theme(t),
-                           bg=COLORS["accent"] if is_active else COLORS["bg_light"],
-                           fg=COLORS["bg"] if is_active else COLORS["fg"],
-                           font=("Segoe UI", 10), relief="flat")
+                            command=lambda t=theme: self.change_theme(t),
+                            bg=COLORS["accent"] if is_active else COLORS["bg_light"],
+                            fg=COLORS["bg"] if is_active else COLORS["fg"],
+                            font=("Segoe UI", 10), relief="flat")
             btn.pack(side="left", padx=3, pady=2)
         
-        tk.Label(scrollable_frame, text="━━━ ✨ Красивый стиль ━━━", 
-                font=("Segoe UI", 11),
-                fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
+        tk.Label(scrollable_frame, text="━━━ ✨ Красивый стиль ━━━",
+                 font=("Segoe UI", 11), fg=COLORS["fg_secondary"],
+                 bg=COLORS["window_bg"]).pack(pady=5)
         
         beautiful_frame = tk.Frame(scrollable_frame, bg=COLORS["window_bg"])
         beautiful_frame.pack(pady=5)
@@ -2153,50 +1812,49 @@ class NeoSpaceOS:
             display_name = get_theme_display_name(theme)
             is_active = theme == current_theme
             btn = tk.Button(beautiful_frame, text=display_name,
-                           command=lambda t=theme: self.change_theme(t),
-                           bg=COLORS["accent"] if is_active else COLORS["bg_light"],
-                           fg=COLORS["bg"] if is_active else COLORS["fg"],
-                           font=("Segoe UI", 10), relief="flat")
+                            command=lambda t=theme: self.change_theme(t),
+                            bg=COLORS["accent"] if is_active else COLORS["bg_light"],
+                            fg=COLORS["bg"] if is_active else COLORS["fg"],
+                            font=("Segoe UI", 10), relief="flat")
             btn.pack(side="left", padx=3, pady=2)
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
         # === ГЕРЦОВКА ===
-        tk.Label(scrollable_frame, text="⚡ Изменить герцовку:", 
-                font=("Segoe UI", 11),
-                fg=COLORS["fg"], bg=COLORS["window_bg"]).pack(pady=5)
+        tk.Label(scrollable_frame, text="⚡ Изменить герцовку:", font=("Segoe UI", 11),
+                 fg=COLORS["fg"], bg=COLORS["window_bg"]).pack(pady=5)
         
         hz_frame = tk.Frame(scrollable_frame, bg=COLORS["window_bg"])
         hz_frame.pack(pady=5)
         
         for hz in [60, 90, 120]:
-            btn = tk.Button(hz_frame, text=f"{hz} Гц", 
-                           command=lambda h=hz: self.change_hz(h),
-                           bg=COLORS["bg_light"], fg=COLORS["fg"],
-                           font=("Segoe UI", 10), relief="flat")
+            btn = tk.Button(hz_frame, text=f"{hz} Гц",
+                            command=lambda h=hz: self.change_hz(h),
+                            bg=COLORS["bg_light"], fg=COLORS["fg"],
+                            font=("Segoe UI", 10), relief="flat")
             btn.pack(side="left", padx=5)
         
         tk.Frame(scrollable_frame, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=30, pady=10)
         
         # === ПОДСКАЗКИ ===
-        tk.Label(scrollable_frame, text="💡 Изменить ОС можно перезапустив launcher.py", 
-                font=("Segoe UI", 10),
-                fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
+        tk.Label(scrollable_frame, text="💡 Изменить ОС можно перезапустив launcher.py",
+                 font=("Segoe UI", 10), fg=COLORS["fg_secondary"],
+                 bg=COLORS["window_bg"]).pack(pady=5)
         
-        tk.Label(scrollable_frame, text="💡 F11 — переключить полноэкранный режим", 
-                font=("Segoe UI", 10),
-                fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
+        tk.Label(scrollable_frame, text="💡 F11 — переключить полноэкранный режим",
+                 font=("Segoe UI", 10), fg=COLORS["fg_secondary"],
+                 bg=COLORS["window_bg"]).pack(pady=5)
         
-        tk.Label(scrollable_frame, text="🖱️ Тяните за края и углы окна для изменения размера", 
-                font=("Segoe UI", 10),
-                fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(pady=5)
+        tk.Label(scrollable_frame, text="🖱️ Тяните за края и углы окна для изменения размера",
+                 font=("Segoe UI", 10), fg=COLORS["fg_secondary"],
+                 bg=COLORS["window_bg"]).pack(pady=5)
+    
     
     def open_games(self):
         win = InternalWindow(self, "🎮 Игры", 550, 450)
         content = win.get_content()
         
-        tk.Label(content, text="🎮 Выберите игру", 
-                 font=("Segoe UI", 18, "bold"),
+        tk.Label(content, text="🎮 Выберите игру", font=("Segoe UI", 18, "bold"),
                  fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=20)
         
         def start_minesweeper():
@@ -2225,20 +1883,21 @@ class NeoSpaceOS:
             frame.pack(pady=8, padx=30, fill="x")
             
             btn = tk.Button(frame, text=name, command=cmd,
-                           bg=color, fg=COLORS["bg"],
-                           font=("Segoe UI", 13, "bold"), relief="flat",
-                           width=18, height=2)
+                            bg=color, fg=COLORS["bg"],
+                            font=("Segoe UI", 13, "bold"), relief="flat",
+                            width=18, height=2)
             btn.pack(side="left", padx=10)
             
-            tk.Label(frame, text=desc, 
-                    font=("Segoe UI", 11),
-                    fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(side="left", padx=10)
+            tk.Label(frame, text=desc, font=("Segoe UI", 11),
+                     fg=COLORS["fg_secondary"], bg=COLORS["window_bg"]).pack(side="left", padx=10)
+    
     
     def change_theme(self, theme_name):
         global COLORS
         
         if get_current_theme() == theme_name:
-            messagebox.showinfo("Информация", f"Тема '{get_theme_display_name(theme_name)}' уже активна")
+            messagebox.showinfo("Информация",
+                f"Тема '{get_theme_display_name(theme_name)}' уже активна")
             return
         
         def apply_theme():
@@ -2272,7 +1931,7 @@ class NeoSpaceOS:
                 if self.status_label:
                     self.status_label.config(fg=COLORS["fg"], bg=COLORS["taskbar"])
                 
-                for window in self.windows:
+                for window in self.windows[:]:
                     try:
                         window.window.configure(bg=COLORS["window_bg"])
                         window.title_bar.configure(bg=COLORS["taskbar"])
@@ -2304,18 +1963,19 @@ class NeoSpaceOS:
                     except:
                         pass
                 
+                # Закрываем старые настройки и открываем новые
                 for window in self.windows[:]:
                     if "Настройки" in window.window.title():
                         window.close()
                 self.open_settings()
                 
-                messagebox.showinfo("✅ Тема изменена", 
-                                   f"Тема: {get_theme_display_name(theme_name)}\n\n"
-                                   "Все элементы обновлены!")
+                messagebox.showinfo("✅ Тема изменена",
+                    f"Тема: {get_theme_display_name(theme_name)}\n\nВсе элементы обновлены!")
             else:
                 messagebox.showerror("Ошибка", "Не удалось сохранить тему")
         
         ThemeProgressDialog(self, theme_name, apply_theme)
+    
     
     def change_hz(self, new_hz):
         global HZ
@@ -2328,6 +1988,7 @@ class NeoSpaceOS:
         self._on_resize_wallpaper(None)
         print(f"⚡ Герцовка изменена на {HZ} Гц")
     
+    
     def show_start_menu(self):
         menu_window = tk.Toplevel(self.root)
         menu_window.title("🧠 Пуск")
@@ -2339,16 +2000,14 @@ class NeoSpaceOS:
         y = self.root.winfo_y() + self.root.winfo_height() - 500
         menu_window.geometry(f"+{x}+{y}")
         
-        tk.Label(menu_window, text=f"{OS_ICON} NeoSpace OS", 
-                font=("Segoe UI", 16, "bold"),
-                fg=COLORS["accent"], bg=COLORS["bg"]).pack(pady=15)
+        tk.Label(menu_window, text=f"{OS_ICON} NeoSpace OS", font=("Segoe UI", 16, "bold"),
+                 fg=COLORS["accent"], bg=COLORS["bg"]).pack(pady=15)
         
         tk.Frame(menu_window, bg=COLORS["bg_light"], height=2).pack(fill="x", padx=10)
         
         apps = [
             ("📁 Файловый менеджер", self.open_file_manager),
             ("🧠 AI-помощник", self.open_ai_chat),
-            ("🌐 Браузер", self.open_browser),
             ("🎮 Игры", self.open_games),
             ("⚙️ Настройки", self.open_settings),
             ("📊 Статистика", self.show_stats),
@@ -2358,32 +2017,30 @@ class NeoSpaceOS:
         ]
         
         for text, cmd in apps:
-            btn = tk.Button(menu_window, text=text, 
-                           command=lambda c=cmd: [c(), menu_window.destroy()],
-                           bg=COLORS["bg"], fg=COLORS["fg"],
-                           font=("Segoe UI", 11), relief="flat",
-                           cursor="hand2", width=30, anchor="w")
+            btn = tk.Button(menu_window, text=text,
+                            command=lambda c=cmd: [c(), menu_window.destroy()],
+                            bg=COLORS["bg"], fg=COLORS["fg"],
+                            font=("Segoe UI", 11), relief="flat",
+                            cursor="hand2", width=30, anchor="w")
             btn.pack(pady=4, padx=15, fill="x")
             
-            def on_enter(e, b=btn):
-                b.config(bg=COLORS["bg_light"])
-            def on_leave(e, b=btn):
-                b.config(bg=COLORS["bg"])
+            def on_enter(e, b=btn): b.config(bg=COLORS["bg_light"])
+            def on_leave(e, b=btn): b.config(bg=COLORS["bg"])
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
         
         tk.Button(menu_window, text="✖ Закрыть", command=menu_window.destroy,
-                 bg=COLORS["bg"], fg=COLORS["button_close"],
-                 font=("Segoe UI", 10), relief="flat",
-                 cursor="hand2").pack(pady=15)
+                  bg=COLORS["bg"], fg=COLORS["button_close"],
+                  font=("Segoe UI", 10), relief="flat",
+                  cursor="hand2").pack(pady=15)
+    
     
     def show_stats(self):
         win = InternalWindow(self, "📊 Статистика", 420, 350, resizable=False)
         content = win.get_content()
         
-        tk.Label(content, text="📊 Статистика", 
-                font=("Segoe UI", 16, "bold"),
-                fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=15)
+        tk.Label(content, text="📊 Статистика", font=("Segoe UI", 16, "bold"),
+                 fg=COLORS["accent"], bg=COLORS["window_bg"]).pack(pady=15)
         
         total_files = 0
         total_folders = 0
@@ -2410,9 +2067,9 @@ class NeoSpaceOS:
         ]
         
         for stat in stats:
-            tk.Label(content, text=stat, 
-                    font=("Segoe UI", 11),
-                    fg=COLORS["fg"], bg=COLORS["window_bg"]).pack(pady=6, anchor="w", padx=30)
+            tk.Label(content, text=stat, font=("Segoe UI", 11),
+                     fg=COLORS["fg"], bg=COLORS["window_bg"]).pack(pady=6, anchor="w", padx=30)
+    
     
     def clear_desktop(self):
         if messagebox.askyesno("Очистка", "Удалить все файлы из виртуальной папки?"):
@@ -2424,6 +2081,7 @@ class NeoSpaceOS:
                     os.remove(path)
             if self.status_label:
                 self.status_label.config(text="🧹 Очищено!")
+
 
 # ===================================================
 # ЗАПУСК
