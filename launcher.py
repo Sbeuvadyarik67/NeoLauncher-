@@ -7,7 +7,7 @@ import subprocess
 import shutil
 
 from ui_theme import COLORS, draw_glass_background
-
+from version import __version__
 
 class NeoLauncher:
     # ---- Карусель ----
@@ -25,7 +25,7 @@ class NeoLauncher:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("✦ NeoBrain Launcher ✦")
+        self.root.title(f"✦ NeoBrain Launcher v{__version__} ✦")
         self.root.geometry("1200x750")
         self.root.minsize(1000, 600)
         self.root.configure(bg=COLORS["bg"])

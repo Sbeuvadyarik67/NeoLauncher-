@@ -5,6 +5,10 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
 проект придерживается [Semantic Versioning](https://semver.org/lang/ru/).
 
+> **Примечание по нумерации**: до версии `2.0.0` лаунчер назывался **NeoBrainLauncher**
+> и имел собственную линейку версий (`v2.0` → `v3.6.0`). С версии `2.0.0` проект
+> переименован в **NeoLauncher** и начал новую линейку версий.
+
 ## [Unreleased]
 
 ### Added
@@ -13,33 +17,127 @@
 ### Fixed
 - (здесь будут исправления)
 
+## [2.2.0] - 2026-09-25
+
+### Added
+- Проект **NeoTracker v0.1** — учёт товаров для малого бизнеса (exe).
+- Единый источник версии — `version.py`.
+- Версия отображается в заголовке окна лаунчера.
+
+### Changed
+- README синхронизирован с актуальной версией.
+- CHANGELOG приведён в порядок (добавлены записи 2.1.0, 2.0.0, архив).
+
+### Removed
+- Удалён устаревший `projects/anomaly/` (заменён на `whydoes.py`).
+
+## [2.1.0] - 2026-09-15
+
+### Added
+- Проект **Brain Clicker** — кликер с мозгами.
+  - 3 разные фигуры теней.
+  - Уникальные подарки от каждой фигуры.
+  - Скрытая механика (1% удачи).
+  - Оффлайн-прогресс.
+
 ## [2.0.0] - 2026-09-12
 
 ### Added
-- Лаунчер `NeoLauncher` с карточками проектов.
+- Лаунчер переименован в **NeoLauncher** (ранее — NeoBrainLauncher).
+- NeoBrain v7.4: 10 тем, 5 стилей, персонажи с учётом пола, плавная смена темы.
 - Поддержка 4 проектов: NeoBrain, NeoSpace OS, NeoReceipt, Why Does This Exist?
-- Переключение тем и стилей.
-- Персонажи с учётом пола в NeoBrain.
-- Плавная смена темы через overlay.
-- Потоковый режим ответа AI.
-- Кнопка остановки генерации.
 
 ### Fixed
 - `base_dir`: `.exe` теперь находит `manifest.json` рядом с собой.
-- Убран мусор из репозитория (`.gitignore`).
-- Удалены личные настройки (`neobrain_settings.json`, `launcher_settings.json`) из репозитория.
+- Убран мусор из репозитория, обновлён `.gitignore`.
 
 ### Changed
 - Отказ от вшивания проектов в `.exe` — теперь проекты рядом, обновляются независимо.
 - Переработана структура тем (10 тем + 5 стилей).
 
-## [1.0.0] - 2026-06-01
+---
+
+## Архив (NeoBrainLauncher, до переименования)
+
+## [7.4.0] - 2026-09-08
+
+### Fixed
+- Исправлен запуск проектов — теперь открываются в новых окнах.
+- NeoSpace OS теперь работает стабильно.
+- Все 4 проекта запускаются корректно.
 
 ### Added
-- Первая версия `NeoBrain` (AI-чат на Ollama).
-- Базовые проекты: NeoSpace OS, NeoReceipt, Why Does This Exist?
-- Первый лаунчер.
+- Неоновая иконка «NL».
 
-[Unreleased]: https://github.com/Sbeuvadyarik67/NeoLauncher-/compare/v2.0.0...HEAD
+## [7.3.0] - 2026-09-04
+
+### Added
+- **NeoBrain v7.3**: персонажи с именем, полом, характером и описанием.
+- Потоковый режим (эффект печати), можно отключить.
+- Кнопка остановки генерации ⏹.
+- Переключение языков (RU / EN).
+
+### Fixed
+- Примагничивание чата — теперь можно листать историю вверх.
+- Ограничение длины ответов (`max_tokens: 512`).
+
+### Changed
+- Автозапуск Ollama.
+
+## [3.6.0] - 2026-08-15
+
+### Added
+- Выбор языка при первом запуске (RU / EN).
+- Плавные анимации: панели, карточки, сообщения.
+- Улучшенные ползунки («Кринжометр», «Температура») с цветовой индикацией.
+- Цветные модели AI (1.5B / 3B / 7B / 8B).
+- Полный README.
+
+### Changed
+- Улучшен UI: hover-эффекты, отзывчивость.
+
+### Fixed
+- Стабильность и производительность.
+
+## [3.0.0] - 2026-07-18
+
+### Added
+- Современный стеклянный дизайн (Glassmorphism).
+- 5 премиум тем: Туманность, Северное сияние, Пламя, Хрусталь, Королевский.
+- Система автообновления из GitHub.
+- Анимированный фон с плавающими частицами.
+- Стеклянные карточки проектов.
+- Пульсирующий статус-дот.
+
+### Fixed
+- Запуск проектов из `.exe`.
+- Пути к файлам.
+- Проблема с кириллицей в путях.
+
+## [3.0] - 2026-07-16
+
+### Added
+- Все проекты в одной папке `projects/`.
+- Обновление — просто перетащи `.py`-файл.
+- Поддержка запуска NeoBrain и NeoSpace-Pro.
+
+### Fixed
+- Ошибки с путями.
+
+## [2.0] - 2026-07-14
+
+### Added
+- Неоновый релиз (первая версия под именем NeoBrainLauncher).
+
+---
+
+[Unreleased]: https://github.com/Sbeuvadyarik67/NeoLauncher-/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/v2.2.0
+[2.1.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/v2.0.0
-[1.0.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/v1.0.0
+[7.4.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/v7.4.0
+[7.3.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/v7.3.0
+[3.6.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/3.6.0
+[3.0.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/v3.0.0
+[3.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/3.0
+[2.0]: https://github.com/Sbeuvadyarik67/NeoLauncher-/releases/tag/2.0
