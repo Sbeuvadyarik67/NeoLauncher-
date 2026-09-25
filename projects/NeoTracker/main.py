@@ -15,10 +15,13 @@ from ui.main_window import MainWindow
 
 
 def main():
-    # 1. Инициализация БД
+    # 1. Автобэкап (до любых изменений в БД)
+    db.daily_backup()
+
+    # 2. Инициализация БД
     db.init_db()
 
-    # 2. Создаём приложение Qt
+    # 3. Создаём приложение Qt
     app = QApplication(sys.argv)
     app.setApplicationName("NeoTracker")
     app.setApplicationVersion("0.1")
@@ -26,11 +29,11 @@ def main():
     # Fusion — базовый стиль, поверх которого ляжет наш QSS
     app.setStyle("Fusion")
 
-    # 3. Главное окно
+    # 4. Главное окно
     window = MainWindow()
     window.show()
 
-    # 4. Запуск цикла событий
+    # 5. Запуск цикла событий
     sys.exit(app.exec())
 
 

@@ -5,24 +5,31 @@ NeoTracker — работа с базой данных (SQLite).
 - создание БД и таблиц
 - добавление/чтение/обновление/удаление категорий
 - добавление/чтение/обновление/удаление товаров
+- автобэкап базы (раз в день)
 
 Все данные хранятся в одном файле: data/warehouse.db
+Бэкапы — в data/backups/warehouse_YYYY-MM-DD.db
 """
 
 import sqlite3
 import os
-from datetime import datetime
+import shutil
+from datetime import datetime, date
 
 
 # ============================================================
-# ПУТЬ К БД
+# ПУТИ
 # ============================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.path.join(DATA_DIR, "warehouse.db")
 
+BACKUP_DIR = os.path.join(DATA_DIR, "backups")
+BACKUP_KEEP_DAYS = 14  # сколько последних бэкапов хранить
+
 os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(BACKUP_DIR, exist_ok=True)
 
 
 # ============================================================
@@ -64,6 +71,47 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+
+# ============================================================
+# АВТОБЭКАП
+# ============================================================
+
+def daily_backup():
+    """
+    Создаёт один бэкап базы в день в data/backups/.
+    Если бэкап на сегодня уже есть — ничего не делает.
+    Автоматически удаляет бэкапы старше BACKUP_KEEP_DAYS дней.
+    """
+    if not os.path.exists(DB_PATH):
+        return  # базы ещё нет — нечего бэкапить
+
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+
+    today = date.today().isoformat()
+    backup_path = os.path.join(BACKUP_DIR, f"warehouse_{today}.db")
+
+    # Бэкап на сегодня уже есть — выходим
+    if os.path.exists(backup_path):
+        return
+
+    # Копируем базу
+    try:
+        shutil.copy2(DB_PATH, backup_path)
+    except Exception:
+        return  # не ломаем приложение, если бэкап не удался
+
+    # Чистим старые бэкапы (оставляем только BACKUP_KEEP_DAYS последних)
+    try:
+        backups = sorted(
+            f for f in os.listdir(BACKUP_DIR)
+            if f.startswith("warehouse_") and f.endswith(".db")
+        )
+        while len(backups) > BACKUP_KEEP_DAYS:
+            old = backups.pop(0)
+            os.remove(os.path.join(BACKUP_DIR, old))
+    except Exception:
+        pass
 
 
 # ============================================================
@@ -234,25 +282,6 @@ def search_products(query, category_id=None):
         dict(row) for row in rows
         if query_lower in row["name"].lower()
     ]
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    like = f"%{query}%"
-
-    if category_id is not None:
-        cursor.execute(
-            "SELECT * FROM products WHERE category_id = ? AND name LIKE ? COLLATE NOCASE ORDER BY name",
-            (category_id, like)
-        )
-    else:
-        cursor.execute(
-            "SELECT * FROM products WHERE name LIKE ? COLLATE NOCASE ORDER BY name",
-            (like,)
-        )
-
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
 
 
 # ============================================================
