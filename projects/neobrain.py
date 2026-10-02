@@ -490,8 +490,7 @@ class NeoBrainChat(QMainWindow):
         self.temperature = self.settings.get("temperature", 0.7)
         self.current_theme = self.settings.get("theme", "🌆 Неон")
         self.current_style = self.settings.get("style", "По умолчанию")
-        self.message_history = self.settings.get("history", [])
-        self.msg_counter = len(self.message_history)
+        self.msg_counter = 0
 
         self.sidebar_visible = True
         self.sidebar_width = 270
@@ -522,11 +521,7 @@ class NeoBrainChat(QMainWindow):
         self.status_text.setText(self.T["status_checking"])
         threading.Thread(target=self._check_ollama_async, daemon=True).start()
 
-        if self.message_history:
-            for msg in self.message_history:
-                self.add_message(msg.get("sender", "NeoBrain"), msg.get("text", ""), restore=True)
-        else:
-            self.add_system_message("✦ NeoBrain", self.T["welcome"])
+        self._reload_chat()
 
     # ============================================================
     # ПРИМЕНЕНИЕ QSS
@@ -635,8 +630,99 @@ class NeoBrainChat(QMainWindow):
 
     def save_history(self):
         if self.settings.get("auto_save", True):
-            self.settings["history"] = self.message_history[-100:]
             self.save_settings()
+
+    def _current_history(self):
+        """История для текущего персонажа (или без персонажа)."""
+        if self.current_character:
+            name = self.current_character.get("name")
+            if name:
+                chars = self.settings.setdefault("characters", {})
+                char = chars.setdefault(name, {})
+                if "history" not in char:
+                    char["history"] = []
+                return char["history"]
+        if "history_no_character" not in self.settings:
+            self.settings["history_no_character"] = []
+        return self.settings["history_no_character"]
+
+    def _reload_chat(self):
+        """Перерисовывает чат для текущего персонажа."""
+        while self.chat_container_layout.count():
+            child = self.chat_container_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        history = self._current_history()
+        self.msg_counter = len(history)
+
+        if history:
+            for msg in history:
+                self.add_message(msg.get("sender", "NeoBrain"), msg.get("text", ""), restore=True)
+        else:
+            self.add_system_message("✦ NeoBrain", self.T["welcome"])
+
+        self.msg_count_label.setText(self.T["msg_count"].format(count=self.msg_counter))
+
+    def on_character_selected(self, index):
+        """Переключение персонажа из dropdown."""
+        name = self.char_combo.itemData(index)
+
+        if name is None:
+            self.current_character = None
+            self.settings["current_character"] = None
+            self.char_info.setText("")
+        else:
+            char = self.settings.get("characters", {}).get(name)
+            if not char:
+                return
+            self.current_character = char
+            self.settings["current_character"] = char
+            self.char_info.setText(f"✓ {name} ({char.get('gender','')})")
+
+        self.save_settings()
+        self._reload_chat()
+
+    def delete_character(self):
+        """Удаляет текущего выбранного персонажа."""
+        if not self.current_character:
+            QMessageBox.information(self, "Удаление", "Персонаж не выбран.")
+            return
+
+        name = self.current_character.get("name")
+        if not name:
+            return
+
+        # Подтверждение
+        answer = QMessageBox.question(
+            self,
+            "Удалить персонажа?",
+            f"Удалить персонажа «{name}»?\nИстория чата будет потеряна.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if answer != QMessageBox.Yes:
+            return
+
+        # Удаляем из settings
+        chars = self.settings.get("characters", {})
+        if name in chars:
+            del chars[name]
+
+        # Убираем из dropdown
+        idx = self.char_combo.findData(name)
+        if idx >= 0:
+            self.char_combo.blockSignals(True)
+            self.char_combo.removeItem(idx)
+            self.char_combo.setCurrentIndex(0)  # «Без персонажа»
+            self.char_combo.blockSignals(False)
+
+        # Сбрасываем текущего
+        self.current_character = None
+        self.settings["current_character"] = None
+        self.char_info.setText("")
+
+        self.save_settings()
+        self._reload_chat()
 
     # ============================================================
     # OLLAMA
@@ -892,6 +978,32 @@ class NeoBrainChat(QMainWindow):
         self.char_btn.setMinimumHeight(40)
         sl.addWidget(self.char_btn)
 
+        self.char_combo = QComboBox()
+        self.char_combo.addItem("— Без персонажа —", None)
+        for cname in self.settings.get("characters", {}).keys():
+            self.char_combo.addItem(f"👤 {cname}", cname)
+        if self.current_character:
+            idx = self.char_combo.findData(self.current_character.get("name"))
+            if idx >= 0:
+                self.char_combo.setCurrentIndex(idx)
+        self.char_combo.currentIndexChanged.connect(self.on_character_selected)
+
+        # Кнопка удаления рядом с combo
+        char_row = QHBoxLayout()
+        char_row.setSpacing(6)
+        char_row.addWidget(self.char_combo, 1)
+
+        self.char_del_btn = QPushButton("🗑")
+        self.char_del_btn.setObjectName("clear_btn")
+        self.char_del_btn.setFixedWidth(40)
+        self.char_del_btn.setMinimumHeight(38)
+        self.char_del_btn.setCursor(Qt.PointingHandCursor)
+        self.char_del_btn.clicked.connect(self.delete_character)
+        self.char_del_btn.setToolTip("Удалить текущего персонажа")
+        char_row.addWidget(self.char_del_btn)
+
+        sl.addLayout(char_row)
+
         self.char_info = QLabel(""); self.char_info.setObjectName("muted")
         sl.addWidget(self.char_info)
         if self.current_character:
@@ -1026,24 +1138,38 @@ class NeoBrainChat(QMainWindow):
     # ЧАТ
     # ============================================================
 
+    def _ai_name(self):
+        """Имя AI в чате — имя персонажа, если выбран, иначе 'NeoBrain'."""
+        if self.current_character:
+            return self.current_character.get("name", "NeoBrain")
+        return "NeoBrain"
+
+    def _is_ai_sender(self, sender):
+        """Проверяет — это сообщение от AI (NeoBrain или персонажа)?"""
+        if sender in ("NeoBrain", "✦ NeoBrain"):
+            return True
+        if self.current_character and sender == self.current_character.get("name"):
+            return True
+        return False
+
     def add_system_message(self, sender, text):
         self.add_message(sender, text, is_system=True)
 
     def add_message(self, sender, text, restore=False, is_system=False):
         if not restore:
-            self.message_history.append({"sender": sender, "text": text})
+            self._current_history().append({"sender": sender, "text": text})
             self.msg_counter += 1
             self.msg_count_label.setText(self.T["msg_count"].format(count=self.msg_counter))
             self.save_history()
 
-        is_user = (sender not in ("NeoBrain", "✦ NeoBrain"))
+        is_user = not self._is_ai_sender(sender)
 
         if is_system:
             show_sender = False
             display_name = ""
         else:
             show_sender = True
-            display_name = "Вы" if is_user else "NeoBrain"
+            display_name = "Вы" if is_user else self._ai_name()
 
         bubble = MessageBubble(text, is_user=is_user, sender=display_name,
                                 palette_key=self.current_theme,
@@ -1064,8 +1190,9 @@ class NeoBrainChat(QMainWindow):
             child = self.chat_container_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
+
         self.msg_counter = 0
-        self.message_history = []
+        self._current_history().clear()
         self.msg_count_label.setText(self.T["msg_count"].format(count=0))
         self.add_system_message("✦ NeoBrain", self.T["chat_cleared"])
         self.save_settings()
@@ -1186,12 +1313,26 @@ class NeoBrainChat(QMainWindow):
             "prompt": prompt,
             "pronoun": pronoun,
         }
+        # Пустая история для нового персонажа
+        self.current_character["history"] = []
+
         self.settings["current_character"] = self.current_character
         self.settings["characters"][name] = self.current_character
         self.save_settings()
 
         self.char_info.setText(f"✓ {name} ({gender})")
         self.add_system_message("✦ NeoBrain", self.T["character_created"].format(name=name, gender=gender))
+
+        # Обновляем dropdown
+        idx = self.char_combo.findData(name)
+        if idx < 0:
+            self.char_combo.addItem(f"👤 {name}", name)
+            idx = self.char_combo.findData(name)
+        self.char_combo.blockSignals(True)
+        self.char_combo.setCurrentIndex(idx)
+        self.char_combo.blockSignals(False)
+
+        self._reload_chat()
         dialog.accept()
 
     # ============================================================
@@ -1211,7 +1352,7 @@ class NeoBrainChat(QMainWindow):
         self.typing_label.setText(self.T["status_typing"])
         self.add_message("Вы", text)
 
-        ai_bubble = MessageBubble("", is_user=False, sender="NeoBrain",
+        ai_bubble = MessageBubble("", is_user=False, sender=self._ai_name(),
                                    palette_key=self.current_theme,
                                    style_key=self.current_style)
         self.chat_container_layout.addWidget(ai_bubble)
@@ -1228,8 +1369,8 @@ class NeoBrainChat(QMainWindow):
         full_prompt = ""
         if system_prompt:
             full_prompt += f"System: {system_prompt}\n"
-        for msg in self.message_history[-10:]:
-            if msg["sender"] in ("NeoBrain", "✦ NeoBrain"):
+        for msg in self._current_history()[-10:]:
+            if self._is_ai_sender(msg["sender"]):
                 full_prompt += f"Assistant: {msg['text']}\n"
             else:
                 full_prompt += f"User: {msg['text']}\n"
@@ -1282,7 +1423,7 @@ class NeoBrainChat(QMainWindow):
         except Exception as e:
             self.sig_update_bubble.emit(ai_bubble, f"❌ Ошибка: {str(e)}")
         finally:
-            self.message_history.append({"sender": "NeoBrain", "text": response_text})
+            self._current_history().append({"sender": self._ai_name(), "text": response_text})
             self.save_history()
             QMetaObject.invokeMethod(self, "_finish_generation", Qt.QueuedConnection)
 
