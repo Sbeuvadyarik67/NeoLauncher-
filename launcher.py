@@ -6,29 +6,23 @@ import sys
 import subprocess
 import shutil
 
-from ui_theme import COLORS, draw_glass_background
+from ui_theme import THEMES, get_theme, draw_glass_background
 from version import __version__
 
-class NeoLauncher:
-    # ---- Карусель ----
-    CARD_W = 320
-    CARD_H = 420
-    GAP = 50
-    HOVER_OFFSET = 12
-    HOVER_UNSET_DELAY = 60
 
-    # ---- Сетка ----
-    GRID_CARD_W = 280
-    GRID_CARD_H = 360
-    GRID_GAP_X = 25
-    GRID_GAP_Y = 25
+class NeoLauncher:
+    GRID_CARD_W = 270
+    GRID_CARD_H = 330
+    GRID_GAP_X = 22
+    GRID_GAP_Y = 22
 
     def __init__(self, root):
         self.root = root
-        self.root.title(f"✦ NeoBrain Launcher v{__version__} ✦")
+        self.root.title(f"\u2726 NeoBrain Launcher v{__version__} \u2726")
         self.root.geometry("1200x750")
-        self.root.minsize(1000, 600)
-        self.root.configure(bg=COLORS["bg"])
+        self.root.minsize(800, 600)
+        self.theme_name = "neon"
+        self.root.configure(bg=THEMES[self.theme_name]["bg"])
 
         if getattr(sys, 'frozen', False):
             self.base_dir = os.path.dirname(sys.executable)
@@ -40,22 +34,16 @@ class NeoLauncher:
 
         self.manifest = self.load_manifest()
         self.settings = self.load_settings()
+        self.theme_name = self.settings.get("theme", "neon")
 
         self.active_index = 0
         self._cards = []
-
-        self._wheel_cooldown = 0
-        self._carousel_frame = None
         self._grid_frame = None
-
-        self._hover_index = None
-        self._hover_job = None
-        self._hover_anim_jobs = {}
-        self._base_y = 0
-
         self._resize_job = None
+        self._entry_anim_jobs = []
 
         self.setup_ui()
+        self._apply_theme()
         self.render_projects()
 
     # ============================================================
@@ -72,7 +60,7 @@ class NeoLauncher:
         return {"projects": {}}
 
     def load_settings(self):
-        default = {"view_mode": "scroll"}
+        default = {"theme": "neon"}
         try:
             if os.path.exists(self.settings_path):
                 with open(self.settings_path, 'r', encoding='utf-8') as f:
@@ -96,90 +84,102 @@ class NeoLauncher:
     # UI
     # ============================================================
 
+    @property
+    def C(self):
+        return THEMES[self.theme_name]
+
     def setup_ui(self):
-        # ---- Фоновый canvas ----
-        self.bg_canvas = tk.Canvas(
-            self.root,
-            bg=COLORS["bg"],
-            highlightthickness=0
-        )
-        self.bg_canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        # Фон — сплошной на root
+        self.root.configure(bg=self.C["bg"])
 
-        # Контейнер поверх фона
-        main = tk.Frame(self.root, bg=COLORS["bg"])
-        main.place(x=0, y=0, relwidth=1, relheight=1)
+        main = tk.Frame(self.root, bg=self.C["bg"])
+        main.pack(fill=tk.BOTH, expand=True)
 
-        self.root.after(80, self._redraw_background)
+        self._main = main
+
         self.root.bind("<Configure>", self._on_resize)
 
-        # ---- Верхняя панель ----
-        top_bar = tk.Frame(main, bg=COLORS["bg"])
-        top_bar.pack(fill=tk.X, padx=40, pady=(30, 0))
+        # Верхняя панель
+        self._top_bar = tk.Frame(main, bg=self.C["bg"])
+        self._top_bar.pack(fill=tk.X, padx=40, pady=(30, 0))
 
-        tk.Label(
-            top_bar,
-            text="✦  NeoBrain Launcher",
+        self.title_label = tk.Label(
+            self._top_bar,
+            text="\u2726  NeoBrain Launcher",
             font=("Segoe UI Light", 34),
-            bg=COLORS["bg"],
-            fg=COLORS["text"]
-        ).pack(side=tk.LEFT)
+            bg=self.C["bg"],
+            fg=self.C["text"]
+        )
+        self.title_label.pack(side=tk.LEFT)
 
-        self.view_btn = tk.Button(
-            top_bar,
-            text="",
+        self.theme_btn = tk.Button(
+            self._top_bar,
+            text=self._theme_btn_text(),
             font=("Segoe UI", 10, "bold"),
-            bg=COLORS["card_top"],
-            fg=COLORS["muted"],
+            bg=self.C["card_top"],
+            fg=self.C["muted"],
             relief=tk.FLAT,
             padx=14,
             pady=6,
             cursor="hand2",
-            command=self.toggle_view_mode,
-            activebackground=COLORS["card_active"],
-            activeforeground=COLORS["text"],
+            command=self.toggle_theme,
+            activebackground=self.C["card_active"],
+            activeforeground=self.C["text"],
             bd=0,
         )
-        self.view_btn.pack(side=tk.RIGHT)
+        self.theme_btn.pack(side=tk.RIGHT)
 
         self.status_label = tk.Label(
             main,
-            text="✦  СИСТЕМА АКТИВНА",
+            text="\u2726  \u0421\u0418\u0421\u0422\u0415\u041c\u0410 \u0410\u041a\u0422\u0418\u0412\u041d\u0410",
             font=("Segoe UI", 12),
-            bg=COLORS["bg"],
-            fg=COLORS["muted"]
+            bg=self.C["bg"],
+            fg=self.C["muted"]
         )
         self.status_label.pack(anchor=tk.W, padx=40, pady=(8, 0))
 
-        # Тонкая линия под статусом
-        sep = tk.Frame(main, bg=COLORS["separator"], height=1)
-        sep.pack(fill=tk.X, padx=40, pady=(12, 0))
+        self.sep = tk.Frame(main, bg=self.C["separator"], height=1)
+        self.sep.pack(fill=tk.X, padx=40, pady=(12, 0))
 
-        self.cards_container = tk.Frame(main, bg=COLORS["bg"])
+        self.cards_container = tk.Frame(main, bg=self.C["bg"])
         self.cards_container.pack(fill=tk.BOTH, expand=True, padx=40, pady=(20, 0))
 
-        tk.Label(
+        self.footer_label = tk.Label(
             main,
-            text="✦  ВСЕ ПРОЕКТЫ В ОДНОЙ ПАПКЕ  ✦",
+            text="\u2726  \u0412\u0421\u0415 \u041f\u0420\u041e\u0415\u041a\u0422\u042b \u0412 \u041e\u0414\u041d\u041e\u0419 \u041f\u0410\u041f\u041a\u0415  \u2726",
             font=("Segoe UI", 9),
-            bg=COLORS["bg"],
-            fg=COLORS["dim"]
-        ).pack(side=tk.BOTTOM, pady=(0, 15))
+            bg=self.C["bg"],
+            fg=self.C["dim"]
+        )
+        self.footer_label.pack(side=tk.BOTTOM, pady=(0, 15))
 
         self.root.bind("<Left>", lambda e: self.change_active(-1))
         self.root.bind("<Right>", lambda e: self.change_active(1))
-        self.root.bind("<MouseWheel>", self._on_mousewheel)
 
-        self._update_view_btn_text()
+    def _theme_btn_text(self):
+        return f"\U0001f3a8  {self.theme_name.capitalize()}"
 
-    def _redraw_background(self, event=None):
+    def _mute_for_claude(self, hex_color):
+        """Приглушает яркий цвет проекта под Claude-тему."""
+        h = hex_color.lstrip("#")
         try:
-            w = self.root.winfo_width()
-            h = self.root.winfo_height()
-            if w < 10 or h < 10:
-                return
-            draw_glass_background(self.bg_canvas, w, h)
+            r, g, b = (int(h[i:i+2], 16) for i in (0, 2, 4))
         except Exception:
-            pass
+            return hex_color
+
+        gray = (r + g + b) // 3
+        mix_gray = 0.30
+
+        r2 = int(r * (1 - mix_gray) + gray * mix_gray)
+        g2 = int(g * (1 - mix_gray) + gray * mix_gray)
+        b2 = int(b * (1 - mix_gray) + gray * mix_gray)
+
+        darken = 0.88
+        r2 = int(r2 * darken)
+        g2 = int(g2 * darken)
+        b2 = int(b2 * darken)
+
+        return f"#{r2:02x}{g2:02x}{b2:02x}"
 
     def _on_resize(self, event):
         if event.widget == self.root:
@@ -188,21 +188,36 @@ class NeoLauncher:
                     self.root.after_cancel(self._resize_job)
                 except Exception:
                     pass
-            self._resize_job = self.root.after(150, self._redraw_background)
+            self._resize_job = self.root.after(150, self._on_resize_render)
 
-    def _update_view_btn_text(self):
-        mode = self.settings.get("view_mode", "scroll")
-        if mode == "scroll":
-            self.view_btn.config(text="↔  Карусель")
-        else:
-            self.view_btn.config(text="🔲  Сетка")
+    def _on_resize_render(self):
+        """Перерендер при ресайзе."""
+        self.render_projects()
 
-    def toggle_view_mode(self):
-        current = self.settings.get("view_mode", "scroll")
-        self.settings["view_mode"] = "grid" if current == "scroll" else "scroll"
+    def toggle_theme(self):
+        self.theme_name = "claude" if self.theme_name == "neon" else "neon"
+        self.settings["theme"] = self.theme_name
         self.save_settings()
-        self._update_view_btn_text()
-        self.active_index = 0
+        self._apply_theme()
+
+    def _apply_theme(self):
+        """Переключает все цвета интерфейса на новую тему."""
+        c = self.C
+
+        self.root.configure(bg=c["bg"])
+        self._main.config(bg=c["bg"])
+        self._top_bar.config(bg=c["bg"])   # ← ФИКС: верхняя панель
+
+        self.title_label.config(bg=c["bg"], fg=c["text"])
+        self.status_label.config(bg=c["bg"], fg=c["muted"])
+        self.footer_label.config(bg=c["bg"], fg=c["dim"])
+        self.theme_btn.config(text=self._theme_btn_text(),
+                             bg=c["card_top"], fg=c["muted"],
+                             activebackground=c["card_active"],
+                             activeforeground=c["text"])
+        self.sep.config(bg=c["separator"])
+        self.cards_container.config(bg=c["bg"])
+
         self.render_projects()
 
     # ============================================================
@@ -210,57 +225,48 @@ class NeoLauncher:
     # ============================================================
 
     def render_projects(self):
-        for job in list(self._hover_anim_jobs.values()):
+        for w in self.cards_container.winfo_children():
+            w.destroy()
+        for job in self._entry_anim_jobs:
             try:
                 self.root.after_cancel(job)
             except Exception:
                 pass
-        self._hover_anim_jobs = {}
-        if self._hover_job is not None:
-            try:
-                self.root.after_cancel(self._hover_job)
-            except Exception:
-                pass
-            self._hover_job = None
-
-        for w in self.cards_container.winfo_children():
-            w.destroy()
+        self._entry_anim_jobs = []
         self._cards = []
-        self._carousel_frame = None
         self._grid_frame = None
-        self._hover_index = None
 
         projects = self.manifest.get("projects", {})
         if not projects:
-            self.status_label.config(text="❌ Нет проектов")
+            self.status_label.config(text="\u274c \u041d\u0435\u0442 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432")
             return
 
-        mode = self.settings.get("view_mode", "scroll")
+        # Откладываем рендер — чтобы контейнер получил реальные размеры
+        self.root.after(30, lambda: self._render_grid(projects))
 
-        if mode == "grid":
-            self._render_grid(projects)
-        else:
-            self._render_scroll(projects)
-
-        self.status_label.config(text=f"✦  {len(projects)} ПРОЕКТОВ ГОТОВЫ К ЗАПУСКУ")
+        self.status_label.config(
+            text=f"\u2726  {len(projects)} \u041f\u0420\u041e\u0415\u041a\u0422\u041e\u0412 \u0413\u041e\u0422\u041e\u0412\u042b \u041a \u0417\u0410\u041f\u0423\u0421\u041a\u0423")
 
     # ============================================================
     # СЕТКА
     # ============================================================
 
     def _render_grid(self, projects):
-        self._grid_frame = tk.Frame(self.cards_container, bg=COLORS["bg"])
+        self._grid_frame = tk.Frame(self.cards_container, bg=self.C["bg"])
         self._grid_frame.pack(fill=tk.BOTH, expand=True)
         self._grid_frame.update_idletasks()
 
         items = list(projects.items())
         total = len(items)
 
-        container_w = self._grid_frame.winfo_width()
-        container_h = self._grid_frame.winfo_height()
-        if container_w <= 1:
+        # Получаем РЕАЛЬНЫЕ размеры контейнера
+        container_w = self.cards_container.winfo_width()
+        container_h = self.cards_container.winfo_height()
+
+        # Fallback — если ещё не отрисовано
+        if container_w <= 50:
             container_w = self.root.winfo_width() - 80
-        if container_h <= 1:
+        if container_h <= 50:
             container_h = self.root.winfo_height() - 200
 
         card_w = self.GRID_CARD_W
@@ -282,231 +288,89 @@ class NeoLauncher:
             col = idx % cols
             x = left_offset + col * (card_w + gap_x)
             y = top_offset + row * (card_h + gap_y)
-            self._create_card(self._grid_frame, pid, data, idx,
-                              mode="grid", x=x, y=y)
+            self._create_card(self._grid_frame, pid, data, idx, x=x, y=y)
 
         self.active_index = 0
         self._update_cards_style()
 
+        self.root.after(80, lambda: self._animate_entry())
+
     # ============================================================
-    # КАРУСЕЛЬ
+    # АНИМАЦИЯ ВЪЕЗДА
     # ============================================================
 
-    def _render_scroll(self, projects):
-        self._carousel_frame = tk.Frame(self.cards_container, bg=COLORS["bg"])
-        self._carousel_frame.pack(fill=tk.BOTH, expand=True)
-
-        for idx, (pid, data) in enumerate(projects.items()):
-            self._create_card(self._carousel_frame, pid, data, idx, mode="scroll")
-
-        self.active_index = 0
-        self.root.after(60, self._layout_cards_now)
-
-    def _get_center_x(self):
-        try:
-            w = self._carousel_frame.winfo_width()
-        except Exception:
-            w = 0
-        if w <= 1:
-            w = self.root.winfo_width() - 80
-        return w // 2
-
-    def _get_base_y(self):
-        try:
-            parent_h = self._carousel_frame.winfo_height()
-        except Exception:
-            parent_h = 0
-        if parent_h <= 1:
-            parent_h = self.CARD_H + 20
-        return max(10, (parent_h - self.CARD_H) // 2)
-
-    def _layout_cards_now(self):
+    def _animate_entry(self):
+        """Каскадный въезд карточек снизу."""
         if not self._cards:
             return
 
-        center = self._get_center_x()
-        y = self._get_base_y()
-        self._base_y = y
-
         for i, card_info in enumerate(self._cards):
-            offset = i - self.active_index
-            x = center + offset * (self.CARD_W + self.GAP) - self.CARD_W // 2
-
-            y_offset = 0
-            if i == self._hover_index and i != self.active_index:
-                y_offset = -self.HOVER_OFFSET
-
             frame = card_info["frame"]
             try:
-                frame.place(x=x, y=y + y_offset,
-                            width=self.CARD_W, height=self.CARD_H)
+                target_y = int(frame.place_info().get("y", 0))
             except Exception:
-                pass
+                continue
+
+            delay = i * 30
+
+            def animate_one(f=frame, ty=target_y):
+                try:
+                    start_y = ty + 40
+                    steps = 18
+                    holder = {"step": 0, "job": None}
+
+                    f.place(y=start_y)
+
+                    def tick():
+                        holder["step"] += 1
+                        t = holder["step"] / steps
+                        te = 1 - (1 - t) ** 3
+                        y = start_y + (ty - start_y) * te
+                        try:
+                            f.place_configure(y=int(y))
+                        except Exception:
+                            return
+                        if holder["step"] < steps:
+                            holder["job"] = self.root.after(10, tick)
+
+                    holder["job"] = self.root.after(0, tick)
+                    self._entry_anim_jobs.append(holder["job"])
+                except Exception:
+                    pass
+
+            job = self.root.after(delay, animate_one)
+            self._entry_anim_jobs.append(job)
 
     # ============================================================
-    # СКРОЛЛ
+    # КАРТОЧКА
     # ============================================================
 
-    def _on_mousewheel(self, event):
-        if self.settings.get("view_mode") != "scroll":
-            return
-        if self._wheel_cooldown > 0:
-            return
-        delta = event.delta
-        if abs(delta) < 1:
-            return
-        if delta < 0:
-            self.change_active(1)
+    def _create_card(self, parent, pid, data, idx, x=0, y=0):
+        c = self.C
+        raw_color = data.get("color", c["accent_pink"])
+        if self.theme_name == "claude":
+            color = self._mute_for_claude(raw_color)
         else:
-            self.change_active(-1)
-        self._wheel_cooldown = 1
-        self.root.after(150, self._reset_wheel_cooldown)
+            color = raw_color
 
-    def _reset_wheel_cooldown(self):
-        self._wheel_cooldown = 0
-
-    # ============================================================
-    # HOVER
-    # ============================================================
-
-    def _bind_hover_recursive(self, widget, idx):
-        widget.bind("<Enter>", lambda e, i=idx: self._on_card_enter(i), add="+")
-        widget.bind("<Leave>", lambda e, i=idx: self._on_card_leave(i), add="+")
-        for child in widget.winfo_children():
-            self._bind_hover_recursive(child, idx)
-
-    def _on_card_enter(self, index):
-        if self._hover_job is not None:
-            try:
-                self.root.after_cancel(self._hover_job)
-            except Exception:
-                pass
-            self._hover_job = None
-
-        if self._hover_index == index:
-            return
-
-        prev = self._hover_index
-        self._hover_index = index
-
-        if prev is not None and prev != index:
-            self._animate_card_y(prev, 0)
-            self._apply_hover_style(prev, False)
-
-        if index != self.active_index:
-            self._animate_card_y(index, -self.HOVER_OFFSET)
-        self._apply_hover_style(index, True)
-
-    def _on_card_leave(self, index):
-        if self._hover_job is not None:
-            try:
-                self.root.after_cancel(self._hover_job)
-            except Exception:
-                pass
-
-        def do_leave():
-            if self._hover_index == index:
-                self._hover_index = None
-                self._animate_card_y(index, 0)
-                self._apply_hover_style(index, False)
-            self._hover_job = None
-
-        self._hover_job = self.root.after(self.HOVER_UNSET_DELAY, do_leave)
-
-    def _animate_card_y(self, index, delta):
-        if index < 0 or index >= len(self._cards):
-            return
-        card_info = self._cards[index]
-        frame = card_info["frame"]
-
-        if self.settings.get("view_mode") == "grid":
-            return
-
-        job = self._hover_anim_jobs.get(index)
-        if job is not None:
-            try:
-                self.root.after_cancel(job)
-            except Exception:
-                pass
-            self._hover_anim_jobs[index] = None
-
-        try:
-            current_y = frame.winfo_y()
-            current_x = frame.winfo_x()
-        except Exception:
-            return
-
-        base_y = self._base_y if self._base_y else self._get_base_y()
-        target_y = base_y + delta
-
-        steps = 8
-        step_holder = {"i": 0}
-
-        def tick():
-            step_holder["i"] += 1
-            t = step_holder["i"] / steps
-            te = 1 - (1 - t) ** 2
-            y = current_y + (target_y - current_y) * te
-            try:
-                frame.place_configure(x=current_x, y=int(y))
-            except Exception:
-                return
-            if step_holder["i"] < steps:
-                self._hover_anim_jobs[index] = self.root.after(12, tick)
-            else:
-                self._hover_anim_jobs[index] = None
-
-        tick()
-
-    def _apply_hover_style(self, index, hovered):
-        if index < 0 or index >= len(self._cards):
-            return
-        if index == self.active_index:
-            return
-
-        card_info = self._cards[index]
-        frame = card_info["frame"]
-        inner = card_info["inner"]
-        card = card_info["card"]
-
-        if hovered:
-            card.config(highlightthickness=1,
-                        highlightbackground=COLORS["border_hover"])
-        else:
-            card.config(highlightthickness=1,
-                        highlightbackground=COLORS["border_dim"])
-
-    # ============================================================
-    # КАРТОЧКА — СТЕКЛЯННАЯ
-    # ============================================================
-
-    def _create_card(self, parent, pid, data, idx, mode="scroll", x=0, y=0):
-        color = data.get("color", COLORS["accent_pink"])
         name = data.get("name", pid)
-        icon = data.get("icon", "📦")
+        icon = data.get("icon", "\U0001f4e6")
         desc = data.get("description", "")
         path = data.get("path", "")
 
-        if mode == "grid":
-            card_w = self.GRID_CARD_W
-            card_h = self.GRID_CARD_H
-        else:
-            card_w = self.CARD_W
-            card_h = self.CARD_H
+        card_w = self.GRID_CARD_W
+        card_h = self.GRID_CARD_H
 
-        # Внешний контейнер
-        outer = tk.Frame(parent, bg=COLORS["bg"], bd=0,
-                         width=card_w, height=card_h)
+        outer = tk.Frame(parent, bg=c["bg"], bd=0, width=card_w, height=card_h)
         outer.place(x=x, y=y, width=card_w, height=card_h)
         outer.pack_propagate(False)
 
-        # Карточка
         card = tk.Frame(
             outer,
-            bg=COLORS["card_top"],
+            bg=c["card_top"],
             relief=tk.FLAT,
             bd=0,
-            highlightbackground=COLORS["border_dim"],
+            highlightbackground=c["border_dim"],
             highlightthickness=1,
             width=card_w,
             height=card_h
@@ -514,19 +378,17 @@ class NeoLauncher:
         card.place(x=0, y=0, width=card_w, height=card_h)
         card.pack_propagate(False)
 
-        # Тонкая полоса-«блик» сверху (2px, цвет проекта)
-        top_stripe = tk.Frame(card, bg=color, height=2)
-        top_stripe.place(x=0, y=0, width=card_w, height=2)
+        top_stripe = tk.Frame(card, bg=color, height=3)
+        top_stripe.place(x=0, y=0, width=card_w, height=3)
 
-        # Внутренний layout
-        inner = tk.Frame(card, bg=COLORS["card_top"])
+        inner = tk.Frame(card, bg=c["card_top"])
         inner.pack(fill=tk.BOTH, expand=True, padx=18, pady=(18, 18))
 
         tk.Label(
             inner,
             text=icon,
             font=("Segoe UI", 28),
-            bg=COLORS["card_top"],
+            bg=c["card_top"],
             fg=color
         ).pack(pady=(0, 12))
 
@@ -534,8 +396,8 @@ class NeoLauncher:
             inner,
             text=name,
             font=("Segoe UI", 16, "bold"),
-            bg=COLORS["card_top"],
-            fg=COLORS["text"],
+            bg=c["card_top"],
+            fg=c["text"],
             wraplength=card_w - 40,
             justify=tk.CENTER
         ).pack()
@@ -545,28 +407,28 @@ class NeoLauncher:
                 inner,
                 text=desc,
                 font=("Segoe UI", 9),
-                bg=COLORS["card_top"],
-                fg=COLORS["muted"],
+                bg=c["card_top"],
+                fg=c["muted"],
                 wraplength=card_w - 45,
                 justify=tk.CENTER
             ).pack(pady=(6, 8))
 
         full_path = os.path.join(self.base_dir, path)
         exists = os.path.exists(full_path)
-        status_text = "✦ ГОТОВ" if exists else "✧ НЕ НАЙДЕН"
-        status_color = COLORS["success"] if exists else COLORS["error"]
+        status_text = "\u2726 \u0413\u041e\u0422\u041e\u0412" if exists else "\u2727 \u041d\u0415 \u041d\u0410\u0419\u0414\u0415\u041d"
+        status_color = c["success"] if exists else c["error"]
 
         tk.Label(
             inner,
             text=status_text,
             font=("Segoe UI", 10),
-            bg=COLORS["card_top"],
+            bg=c["card_top"],
             fg=status_color
         ).pack()
 
         tk.Button(
             inner,
-            text="▶  ЗАПУСТИТЬ",
+            text="\u25b6  \u0417\u0410\u041f\u0423\u0421\u0422\u0418\u0422\u042c",
             font=("Segoe UI", 11, "bold"),
             bg=color,
             fg="white",
@@ -576,7 +438,7 @@ class NeoLauncher:
             command=lambda p=pid: self.launch_project(p),
             cursor="hand2",
             bd=0,
-            activebackground=COLORS["card_active"],
+            activebackground=c["card_active"],
             activeforeground="white",
         ).pack(pady=10)
 
@@ -593,12 +455,10 @@ class NeoLauncher:
             "index": idx,
         }
         self._cards.append(card_info)
-
-        self._bind_hover_recursive(card, idx)
         return card_info
 
     # ============================================================
-    # КЛИК / АКТИВНАЯ
+    # КЛИК / АКТИВНАЯ КАРТОЧКА
     # ============================================================
 
     def _on_card_click(self, index):
@@ -606,8 +466,6 @@ class NeoLauncher:
             return
         self.active_index = index
         self._update_cards_style()
-        if self.settings.get("view_mode") == "scroll":
-            self.root.after_idle(self._layout_cards_now)
 
     def change_active(self, delta):
         if not self._cards:
@@ -621,44 +479,38 @@ class NeoLauncher:
             return
         self.active_index = new_index
         self._update_cards_style()
-        if self.settings.get("view_mode") == "scroll":
-            self.root.after_idle(self._layout_cards_now)
 
     def _update_cards_style(self):
-        for i, c in enumerate(self._cards):
-            card = c["card"]
-            inner = c["inner"]
-            color = c["color"]
-            stripe = c["stripe"]
+        for i, ci in enumerate(self._cards):
+            card = ci["card"]
+            inner = ci["inner"]
+            color = ci["color"]
+            stripe = ci["stripe"]
+            c = self.C
 
+            # ← ФИКС: рамка ВСЕГДА одинаковая — без "щупанья" краёв
             if i == self.active_index:
-                if c.get("_was_active"):
-                    continue
-                c["_was_active"] = True
-                card.config(bg=COLORS["card_active"],
+                card.config(bg=c["card_active"],
                             highlightthickness=1,
-                            highlightbackground=color)
-                inner.config(bg=COLORS["card_active"])
+                            highlightbackground=c["border_dim"])
+                inner.config(bg=c["card_active"])
                 stripe.config(bg=color)
                 for child in inner.winfo_children():
                     if isinstance(child, tk.Label):
                         try:
-                            child.config(bg=COLORS["card_active"])
+                            child.config(bg=c["card_active"])
                         except Exception:
                             pass
             else:
-                if not c.get("_was_active", False):
-                    continue
-                c["_was_active"] = False
-                card.config(bg=COLORS["card_top"],
+                card.config(bg=c["card_top"],
                             highlightthickness=1,
-                            highlightbackground=COLORS["border_dim"])
-                inner.config(bg=COLORS["card_top"])
+                            highlightbackground=c["border_dim"])
+                inner.config(bg=c["card_top"])
                 stripe.config(bg=color)
                 for child in inner.winfo_children():
                     if isinstance(child, tk.Label):
                         try:
-                            child.config(bg=COLORS["card_top"])
+                            child.config(bg=c["card_top"])
                         except Exception:
                             pass
 
@@ -669,28 +521,28 @@ class NeoLauncher:
     def launch_project(self, project_id):
         data = self.manifest["projects"].get(project_id)
         if not data:
-            messagebox.showerror("Error", f"Проект {project_id} не найден!")
+            messagebox.showerror("Error", f"\u041f\u0440\u043e\u0435\u043a\u0442 {project_id} \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d!")
             return
 
         path = os.path.join(self.base_dir, data.get("path", ""))
         if not os.path.exists(path):
-            messagebox.showerror("Error", f"Файл не найден:\n{path}")
+            messagebox.showerror("Error", f"\u0424\u0430\u0439\u043b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d:\n{path}")
             return
 
         try:
-            self.status_label.config(text=f"🚀  ЗАПУСК {data['name']}...")
+            self.status_label.config(text=f"\U0001f680  \u0417\u0410\u041f\u0423\u0421\u041a {data['name']}...")
 
             if project_id == "neospace":
                 os.startfile(path)
                 self.root.after(3000, lambda: self.status_label.config(
-                    text=f"✦  {data['name']} ЗАПУЩЕН"))
+                    text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d"))
                 return
 
             if data.get("type") == "html":
                 import webbrowser
                 webbrowser.open(f"file:///{path.replace(os.sep, '/')}")
                 self.root.after(2000, lambda: self.status_label.config(
-                    text=f"✦  {data['name']} ЗАПУЩЕН"))
+                    text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d"))
                 return
 
             if data.get("type") == "python":
@@ -707,10 +559,10 @@ class NeoLauncher:
             else:
                 subprocess.Popen([path], shell=False)
 
-            self.status_label.config(text=f"✦  {data['name']} ЗАПУЩЕН")
+            self.status_label.config(text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d")
         except Exception as e:
-            messagebox.showerror("Error", f"Не удалось запустить {data['name']}:\n{str(e)}")
-            self.status_label.config(text=f"❌  ОШИБКА ЗАПУСКА {data['name']}")
+            messagebox.showerror("Error", f"\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c {data['name']}:\n{str(e)}")
+            self.status_label.config(text=f"\u274c  \u041e\u0428\u0418\u0411\u041a\u0410 \u0417\u0410\u041f\u0423\u0421\u041a\u0410 {data['name']}")
 
 
 if __name__ == "__main__":
