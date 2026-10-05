@@ -47,11 +47,11 @@
     },
     "whydoes": {
       "name": "🌀 Why Does This Exist?",
-      "version": "2.0.0",
+      "version": "3.0.0",
       "path": "projects/whydoes.py",
       "icon": "🌀",
       "color": "#f59e0b",
-      "description": "Интерактивная панель с 12 спецрежимами, антистресс-эффектами и улучшенной производительностью",
+      "description": "Интерактивная панель с 13 спецрежимами, антистресс-эффектами и улучшенной производительностью",
       "tags": [
         "Visualization",
         "Interactive",
