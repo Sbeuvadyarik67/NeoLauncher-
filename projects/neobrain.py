@@ -5,6 +5,8 @@ import threading
 import requests
 import subprocess
 import time
+import shutil
+from pathlib import Path
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
@@ -20,24 +22,38 @@ LANGUAGES = {
         "model": "🧠 Модель", "refresh": "🔄 Обновить модели",
         "stream": "💬 Потоковый ответ", "stream_check": "Включить плавный вывод",
         "character": "👤 Персонаж", "create_character": "➕ Создать персонажа",
+        "edit_avatar": "✏ Изменить аватар", "edit_character": "✏ Редактировать персонажа",
         "clear": "🗑 Очистить чат", "send_placeholder": "Напишите сообщение… (Enter для отправки)",
         "status_ready": "Готов", "status_checking": "⏳ Проверка Ollama...",
         "status_ollama_ok": "✅ Ollama запущен", "status_ollama_error": "⚠️ Ollama не доступен",
         "status_launch": "⏳ Запуск Ollama...", "status_ollama_fail": "⚠️ Не удалось запустить Ollama",
         "status_ollama_started": "✅ Ollama запущен", "status_typing": "💬 Печатает...",
         "status_error": "❌ Ошибка: {e}",
-        "character_title": "✦ Создать персонажа", "character_name": "👤 Имя персонажа:",
+        "character_title": "✦ Создать персонажа",
+        "character_edit_title": "✏ Редактировать персонажа",
+        "character_name": "👤 Имя персонажа:",
         "character_gender": "⚧ Пол:", "character_male": "♂ Мужской", "character_female": "♀ Женский",
         "character_personality": "🧠 Характер (личность):",
         "character_desc": "📝 Описание (как отвечает, стиль речи, манера):",
-        "character_create": "✅ Создать", "character_cancel": "Отмена",
+        "character_create": "✅ Создать", "character_save": "✅ Сохранить",
+        "character_cancel": "Отмена",
         "character_error": "Ошибка", "character_error_name": "Введите имя персонажа!",
+        "character_error_exists": "Персонаж с именем «{name}» уже существует!",
         "character_created": "✅ Создан персонаж: {name} ({gender})",
+        "character_updated": "✅ Персонаж «{name}» обновлён",
+        "character_renamed": "✅ Персонаж переименован: «{old}» → «{new}»",
         "msg_count": "Сообщений: {count}", "clear_confirm": "Очистка",
         "clear_confirm_text": "Удалить всю историю чата?", "chat_cleared": "Чат очищен.",
         "model_changed": "Модель изменена на: {model}",
         "theme_changed": "Тема: {theme}", "style_changed": "Стиль: {style}",
         "welcome": "Привет! Я твой AI-помощник. Начни диалог или выбери тему.",
+        "avatar_upload": "📁 Загрузить аватар", "avatar_reset": "🗑 Сбросить",
+        "avatar_hint": "Аватар (необязательно)",
+        "avatar_editor_title": "✏ Настройка аватара",
+        "avatar_editor_hint": "Перетащи мышью · Колесо мыши — зум",
+        "avatar_zoom": "🔍 Масштаб",
+        "avatar_done": "✅ Готово", "avatar_cancel": "Отмена", "avatar_reset_pos": "↺ Сброс",
+        "avatar_load_first": "Сначала загрузите аватар",
     },
     "en": {
         "title": "✦ NeoBrain", "settings": "✦ Settings", "hide": "◀ Hide", "show": "▶ Show",
@@ -45,24 +61,38 @@ LANGUAGES = {
         "model": "🧠 Model", "refresh": "🔄 Refresh models",
         "stream": "💬 Stream mode", "stream_check": "Enable smooth output",
         "character": "👤 Character", "create_character": "➕ Create character",
+        "edit_avatar": "✏ Edit avatar", "edit_character": "✏ Edit character",
         "clear": "🗑 Clear chat", "send_placeholder": "Type a message… (Enter to send)",
         "status_ready": "Ready", "status_checking": "⏳ Checking Ollama...",
         "status_ollama_ok": "✅ Ollama running", "status_ollama_error": "⚠️ Ollama unavailable",
         "status_launch": "⏳ Starting Ollama...", "status_ollama_fail": "⚠️ Failed to start Ollama",
         "status_ollama_started": "✅ Ollama started", "status_typing": "💬 Typing...",
         "status_error": "❌ Error: {e}",
-        "character_title": "✦ Create character", "character_name": "👤 Character name:",
+        "character_title": "✦ Create character",
+        "character_edit_title": "✏ Edit character",
+        "character_name": "👤 Character name:",
         "character_gender": "⚧ Gender:", "character_male": "♂ Male", "character_female": "♀ Female",
         "character_personality": "🧠 Personality:",
         "character_desc": "📝 Description (style, manner):",
-        "character_create": "✅ Create", "character_cancel": "Cancel",
+        "character_create": "✅ Create", "character_save": "✅ Save",
+        "character_cancel": "Cancel",
         "character_error": "Error", "character_error_name": "Enter character name!",
+        "character_error_exists": "Character «{name}» already exists!",
         "character_created": "✅ Character created: {name} ({gender})",
+        "character_updated": "✅ Character «{name}» updated",
+        "character_renamed": "✅ Character renamed: «{old}» → «{new}»",
         "msg_count": "Messages: {count}", "clear_confirm": "Clear",
         "clear_confirm_text": "Delete entire chat history?", "chat_cleared": "Chat cleared.",
         "model_changed": "Model changed to: {model}",
         "theme_changed": "Theme: {theme}", "style_changed": "Style: {style}",
         "welcome": "Hi! I'm your AI assistant. Start a conversation or choose a theme.",
+        "avatar_upload": "📁 Upload avatar", "avatar_reset": "🗑 Reset",
+        "avatar_hint": "Avatar (optional)",
+        "avatar_editor_title": "✏ Avatar editor",
+        "avatar_editor_hint": "Drag with mouse · Wheel to zoom",
+        "avatar_zoom": "🔍 Zoom",
+        "avatar_done": "✅ Done", "avatar_cancel": "Cancel", "avatar_reset_pos": "↺ Reset",
+        "avatar_load_first": "Load an avatar first",
     }
 }
 
@@ -109,10 +139,216 @@ STYLES = {
                      "font": "'Consolas', 'Courier New', monospace", "font_size": 14, "input_font": 14},
 }
 
+# ======================================================
+# АВАТАРЫ
+# ======================================================
+
+AVATARS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "NeoBrain", "avatars")
+USER_AVATAR_DIR = os.path.join(AVATARS_DIR, "user")
+
+os.makedirs(AVATARS_DIR, exist_ok=True)
+os.makedirs(USER_AVATAR_DIR, exist_ok=True)
+
+
+def _safe_name(name: str) -> str:
+    if not name:
+        return ""
+    return "".join(c for c in name if c.isalnum() or c in "-_ ").strip()
+
+
+def get_avatar_path(character_name: str):
+    if not character_name:
+        return None
+    safe = _safe_name(character_name)
+    if not safe:
+        return None
+    folder = os.path.join(AVATARS_DIR, safe)
+    for ext in ("png", "jpg", "jpeg", "webp"):
+        path = os.path.join(folder, f"avatar.{ext}")
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def save_avatar(character_name: str, src_path: str):
+    if not character_name or not src_path or not os.path.exists(src_path):
+        return None
+    safe = _safe_name(character_name)
+    if not safe:
+        return None
+    folder = os.path.join(AVATARS_DIR, safe)
+    os.makedirs(folder, exist_ok=True)
+    for old_ext in ("png", "jpg", "jpeg", "webp"):
+        old = os.path.join(folder, f"avatar.{old_ext}")
+        if os.path.exists(old):
+            try:
+                os.remove(old)
+            except OSError:
+                pass
+    ext = os.path.splitext(src_path)[1].lower().lstrip(".") or "png"
+    if ext == "jpeg":
+        ext = "jpg"
+    if ext not in ("png", "jpg", "webp"):
+        ext = "png"
+    dst = os.path.join(folder, f"avatar.{ext}")
+    try:
+        shutil.copy2(src_path, dst)
+        return dst
+    except OSError:
+        return None
+
+
+def delete_avatar(character_name: str) -> bool:
+    if not character_name:
+        return False
+    safe = _safe_name(character_name)
+    folder = os.path.join(AVATARS_DIR, safe)
+    if not os.path.isdir(folder):
+        return False
+    removed = False
+    for ext in ("png", "jpg", "jpeg", "webp"):
+        path = os.path.join(folder, f"avatar.{ext}")
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                removed = True
+            except OSError:
+                pass
+    return removed
+
+
+def rename_avatar_folder(old_name: str, new_name: str) -> bool:
+    """
+    Переименовывает папку аватара при смене имени персонажа.
+    Возвращает True при успехе, False если нечего переименовывать.
+    """
+    if not old_name or not new_name or old_name == new_name:
+        return False
+    old_safe = _safe_name(old_name)
+    new_safe = _safe_name(new_name)
+    if not old_safe or not new_safe or old_safe == new_safe:
+        return False
+    old_folder = os.path.join(AVATARS_DIR, old_safe)
+    new_folder = os.path.join(AVATARS_DIR, new_safe)
+    if not os.path.isdir(old_folder):
+        return False
+    try:
+        if os.path.isdir(new_folder):
+            # Если новая папка существует — копируем содержимое и удаляем старую
+            for f in os.listdir(old_folder):
+                shutil.copy2(os.path.join(old_folder, f), os.path.join(new_folder, f))
+            shutil.rmtree(old_folder, ignore_errors=True)
+        else:
+            os.rename(old_folder, new_folder)
+        return True
+    except OSError:
+        return False
+
+
+def make_round_pixmap(pixmap: QPixmap, size: int,
+                       zoom: float = 1.0,
+                       offset_x: float = 0.0,
+                       offset_y: float = 0.0,
+                       dim_outside: bool = False,
+                       dim_alpha: float = 0.40) -> QPixmap:
+    if pixmap.isNull():
+        return pixmap
+
+    zoom = max(0.1, float(zoom))
+    target = max(1, int(round(size * zoom)))
+
+    scaled = pixmap.scaled(
+        target, target,
+        Qt.KeepAspectRatioByExpanding,
+        Qt.SmoothTransformation
+    )
+
+    out = QPixmap(size, size)
+    out.fill(Qt.transparent)
+    painter = QPainter(out)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+
+    path = QPainterPath()
+    path.addEllipse(0, 0, size, size)
+    painter.setClipPath(path)
+
+    px_offset_x = int(offset_x * size)
+    px_offset_y = int(offset_y * size)
+
+    draw_x = (size - scaled.width()) // 2 + px_offset_x
+    draw_y = (size - scaled.height()) // 2 + px_offset_y
+    painter.drawPixmap(draw_x, draw_y, scaled)
+
+    if dim_outside:
+        painter.setClipping(False)
+        outer = QPainterPath()
+        outer.addRect(0, 0, size, size)
+        inner = QPainterPath()
+        inner.addEllipse(0, 0, size, size)
+        mask = outer.subtracted(inner)
+        painter.fillPath(mask, QColor(0, 0, 0, int(255 * max(0.0, min(1.0, dim_alpha)))))
+
+    painter.end()
+    return out
+
+
+def make_letter_avatar(name: str, size: int, accent_hex: str = "#8b5cf6",
+                        accent2_hex: str = "#00d4ff") -> QPixmap:
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+    grad = QLinearGradient(0, 0, size, size)
+    grad.setColorAt(0.0, QColor(accent_hex))
+    grad.setColorAt(1.0, QColor(accent2_hex))
+    painter.setBrush(QBrush(grad))
+    painter.setPen(Qt.NoPen)
+    painter.drawEllipse(0, 0, size, size)
+    letter = (name.strip()[0] if name.strip() else "?").upper()
+    font = QFont()
+    font.setPointSize(int(size * 0.45))
+    font.setBold(True)
+    painter.setFont(font)
+    painter.setPen(QColor("white"))
+    painter.drawText(pixmap.rect(), Qt.AlignCenter, letter)
+    painter.end()
+    return pixmap
+
+
+def get_character_pixmap(character_name: str, size: int,
+                          palette_key: str = "🌆 Неон",
+                          style_key: str = "По умолчанию",
+                          character: dict = None,
+                          zoom: float = None,
+                          offset_x: float = None,
+                          offset_y: float = None) -> QPixmap:
+    p = get_effective_palette(palette_key, style_key)
+    accent = QColor(p["accent"]).name()
+    accent2 = QColor(p["accent2"]).name()
+
+    if character:
+        if zoom is None:
+            zoom = float(character.get("avatar_zoom", 1.0))
+        if offset_x is None:
+            offset_x = float(character.get("avatar_offset_x", 0.0))
+        if offset_y is None:
+            offset_y = float(character.get("avatar_offset_y", 0.0))
+
+    if zoom is None: zoom = 1.0
+    if offset_x is None: offset_x = 0.0
+    if offset_y is None: offset_y = 0.0
+
+    path = get_avatar_path(character_name)
+    if path:
+        pm = QPixmap(path)
+        if not pm.isNull():
+            return make_round_pixmap(pm, size, zoom, offset_x, offset_y)
+    return make_letter_avatar(character_name or "?", size, accent, accent2)
+
 
 def get_effective_palette(palette_key: str, style_key: str) -> dict:
     p = dict(PALETTES.get(palette_key, PALETTES["🌆 Неон"]))
-
     if style_key == "💻 Terminal":
         p.update({"bg": "#0c0c0c", "card": "rgba(20,20,20,0.95)",
                   "border": "rgba(0,255,0,0.15)", "accent": "#00ff00", "accent2": "#00cc00",
@@ -134,27 +370,23 @@ def get_effective_palette(palette_key: str, style_key: str) -> dict:
                   "scroll_bg": "rgba(0,0,0,0.05)",
                   "scroll_handle": "rgba(0,0,0,0.15)", "scroll_hover": "rgba(0,0,0,0.25)",
                   "light": True})
-
     return p
 
 
 def build_qss(palette_key: str, style_key: str) -> str:
     p = get_effective_palette(palette_key, style_key)
     s = STYLES.get(style_key, STYLES["По умолчанию"])
-
     ff = s["font"]
     fs = s["font_size"]
     ifs = s["input_font"]
     r = s["radius"]
     br = s["btn_radius"]
     sr = s["send_radius"]
-
     accent_text = "white"
     if palette_key == "💻 Киберпанк" and style_key != "💻 Terminal":
         accent_text = "#0a0f1a"
     if style_key == "💻 Terminal":
         accent_text = "#0c0c0c"
-
     return f"""
 QMainWindow {{ background: {p['bg']}; }}
 QWidget {{ font-family: {ff}; }}
@@ -185,7 +417,6 @@ QPushButton:checked {{
     border: 2px solid {p['accent2']};
     font-weight: 700;
 }}
-
 QPushButton#send_btn {{
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 {p['accent']}, stop:1 {p['accent2']});
@@ -199,7 +430,6 @@ QPushButton#send_btn:hover {{
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 {p['accent2']}, stop:1 {p['accent']});
 }}
-
 QPushButton#stop_btn {{
     background: #ff4757; color: white;
     border: none; border-radius: {sr}px;
@@ -207,14 +437,12 @@ QPushButton#stop_btn {{
     font-size: 20px; font-weight: 700;
 }}
 QPushButton#stop_btn:hover {{ background: #ff6b7b; }}
-
 QPushButton#clear_btn {{
     background: #ff4757; color: white;
     border: none; border-radius: {br}px;
     padding: 11px; font-weight: 600;
 }}
 QPushButton#clear_btn:hover {{ background: #ff6b7b; }}
-
 QPushButton#refresh_btn {{
     background: rgba(120,120,120,0.12);
     color: {p['accent']};
@@ -224,7 +452,6 @@ QPushButton#refresh_btn {{
     font-size: 12px; font-weight: 500;
 }}
 QPushButton#refresh_btn:hover {{ background: rgba(120,120,120,0.25); }}
-
 QPushButton#sidebar_trigger {{
     background: {p['card']};
     border: 1px solid {p['border']};
@@ -233,7 +460,6 @@ QPushButton#sidebar_trigger {{
     color: {p['accent']};
     font-size: 13px; font-weight: bold;
 }}
-
 QLineEdit {{
     background: {p['input_bg']};
     border: 1px solid {p['input_border']};
@@ -244,7 +470,6 @@ QLineEdit {{
     font-family: {ff};
 }}
 QLineEdit:focus {{ border: 2px solid {p['accent']}; }}
-
 QLineEdit#input_field {{
     background: {p['input_bg']};
     border: 2px solid {p['input_border']};
@@ -255,7 +480,6 @@ QLineEdit#input_field {{
     font-family: {ff};
 }}
 QLineEdit#input_field:focus {{ border: 2px solid {p['accent']}; }}
-
 QTextEdit {{
     background: {p['input_bg']};
     border: 1px solid {p['input_border']};
@@ -266,7 +490,6 @@ QTextEdit {{
     font-family: {ff};
 }}
 QTextEdit:focus {{ border: 1px solid {p['accent']}; }}
-
 QComboBox {{
     background: {p['input_bg']};
     border: 1px solid {p['input_border']};
@@ -283,17 +506,13 @@ QComboBox QAbstractItemView {{
     selection-background-color: {p['accent']};
     border: 1px solid {p['border']};
 }}
-
 QLabel {{ color: {p['text']}; font-family: {ff}; }}
 QLabel#muted {{ color: {p['muted']}; font-size: 12px; font-weight: 600; }}
 QLabel#title {{ color: {p['accent']}; font-size: 22px; font-weight: 700; font-family: {ff}; }}
 QLabel#panel_title {{ color: {p['accent']}; font-size: 19px; font-weight: 700; font-family: {ff}; }}
 QLabel#separator {{ background: {p['border']}; }}
-
 QCheckBox {{ color: {p['text']}; font-size: 13px; font-family: {ff}; }}
-
 QScrollArea {{ border: none; background: transparent; }}
-
 QScrollBar:vertical {{
     background: {p['scroll_bg']};
     width: 6px; border-radius: 3px;
@@ -303,10 +522,8 @@ QScrollBar::handle:vertical {{
     border-radius: 3px;
 }}
 QScrollBar::handle:vertical:hover {{ background: {p['scroll_hover']}; }}
-
 QStatusBar {{ color: {p['muted']}; font-family: {ff}; }}
 QStatusBar QLabel {{ color: {p['muted']}; }}
-
 QMenu {{
     background: {p['card']};
     color: {p['text']};
@@ -316,12 +533,25 @@ QMenu {{
 }}
 QMenu::item {{ padding: 6px 20px; border-radius: 4px; }}
 QMenu::item:selected {{ background: {p['accent']}; color: {accent_text}; }}
-
 QMessageBox {{ background: {p['bg']}; }}
 QMessageBox QLabel {{ color: {p['text']}; }}
 QMessageBox QPushButton {{
     background: {p['accent']}; color: {accent_text};
     border: none; border-radius: 6px; padding: 8px 18px; min-width: 70px;
+}}
+QSlider::groove:horizontal {{
+    background: {p['input_border']};
+    height: 6px;
+    border-radius: 3px;
+}}
+QSlider::handle:horizontal {{
+    background: {p['accent']};
+    width: 16px;
+    margin: -6px 0;
+    border-radius: 8px;
+}}
+QSlider::handle:horizontal:hover {{
+    background: {p['accent2']};
 }}
 """
 
@@ -331,8 +561,6 @@ QMessageBox QPushButton {{
 # ======================================================
 
 class FadeOverlay(QWidget):
-    """Полупрозрачный overlay поверх окна для плавной смены темы."""
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
@@ -354,20 +582,241 @@ class FadeOverlay(QWidget):
 
 
 # ======================================================
+# АВАТАР-ВИДЖЕТ
+# ======================================================
+
+class AvatarWidget(QLabel):
+    def __init__(self, name: str, size: int = 36,
+                 palette_key: str = "🌆 Неон",
+                 style_key: str = "По умолчанию",
+                 is_user: bool = False,
+                 character: dict = None,
+                 parent=None):
+        super().__init__(parent)
+        self.avatar_name = name
+        self.avatar_size = size
+        self.palette_key = palette_key
+        self.style_key = style_key
+        self.is_user = is_user
+        self.character = character or {}
+        self.setFixedSize(size, size)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setScaledContents(False)
+        self.setStyleSheet("background: transparent; border: none;")
+        self._refresh()
+
+    def _refresh(self):
+        if self.is_user:
+            pm = make_letter_avatar(self.avatar_name or "Вы", self.avatar_size, "#4facfe", "#8b5cf6")
+        else:
+            pm = get_character_pixmap(
+                self.avatar_name, self.avatar_size,
+                self.palette_key, self.style_key,
+                character=self.character
+            )
+        self.setPixmap(pm)
+
+    def update_palette(self, palette_key: str, style_key: str):
+        self.palette_key = palette_key
+        self.style_key = style_key
+        self._refresh()
+
+    def update_name(self, name: str, character: dict = None):
+        self.avatar_name = name
+        if character is not None:
+            self.character = character
+        self._refresh()
+
+
+# ======================================================
+# РЕДАКТОР АВАТАРА (drag + zoom)
+# ======================================================
+
+class AvatarEditorDialog(QDialog):
+    """Мини-редактор: таскаем фото внутри круга, зум колесом/слайдером."""
+
+    CANVAS_SIZE = 260
+
+    def __init__(self, source_pixmap: QPixmap,
+                 palette_key: str = "🌆 Неон",
+                 style_key: str = "По умолчанию",
+                 initial_zoom: float = 1.0,
+                 initial_offset_x: float = 0.0,
+                 initial_offset_y: float = 0.0,
+                 parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("✏ Настройка аватара")
+        self.setFixedSize(420, 500)
+        self.setStyleSheet(build_qss(palette_key, style_key))
+
+        self._source = source_pixmap
+        self._zoom = initial_zoom
+        self._offset_x = initial_offset_x
+        self._offset_y = initial_offset_y
+        self._dragging = False
+        self._drag_start = QPoint()
+        self._offset_at_drag = (initial_offset_x, initial_offset_y)
+        self._result = None
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(14)
+
+        title = QLabel("✏ Настройка аватара")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        hint = QLabel("Перетащи мышью · Колесо мыши — зум")
+        hint.setObjectName("muted")
+        layout.addWidget(hint)
+
+        self.canvas = QLabel()
+        self.canvas.setFixedSize(self.CANVAS_SIZE, self.CANVAS_SIZE)
+        self.canvas.setAlignment(Qt.AlignCenter)
+        self.canvas.setStyleSheet(
+            "background: rgba(255,255,255,0.04);"
+            "border: 2px dashed rgba(255,255,255,0.18);"
+            "border-radius: %dpx;" % (self.CANVAS_SIZE // 2)
+        )
+        self.canvas.setMouseTracking(True)
+        self.canvas.installEventFilter(self)
+
+        canvas_wrap = QHBoxLayout()
+        canvas_wrap.addStretch()
+        canvas_wrap.addWidget(self.canvas)
+        canvas_wrap.addStretch()
+        layout.addLayout(canvas_wrap)
+
+        zoom_row = QHBoxLayout()
+        zoom_row.setSpacing(10)
+        zl = QLabel("🔍 Масштаб"); zl.setObjectName("muted")
+        zoom_row.addWidget(zl)
+
+        self.zoom_slider = QSlider(Qt.Horizontal)
+        self.zoom_slider.setMinimum(50)
+        self.zoom_slider.setMaximum(300)
+        self.zoom_slider.setValue(int(self._zoom * 100))
+        self.zoom_slider.valueChanged.connect(self._on_zoom_slider)
+        zoom_row.addWidget(self.zoom_slider, 1)
+
+        self.zoom_value = QLabel(f"{self._zoom:.2f}")
+        self.zoom_value.setObjectName("muted")
+        self.zoom_value.setFixedWidth(46)
+        self.zoom_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        zoom_row.addWidget(self.zoom_value)
+
+        layout.addLayout(zoom_row)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(10)
+
+        reset_btn = QPushButton("↺ Сброс")
+        reset_btn.setObjectName("refresh_btn")
+        reset_btn.clicked.connect(self._reset)
+        btn_row.addWidget(reset_btn)
+
+        btn_row.addStretch()
+
+        cancel_btn = QPushButton("Отмена")
+        cancel_btn.setObjectName("refresh_btn")
+        cancel_btn.clicked.connect(self.reject)
+        btn_row.addWidget(cancel_btn)
+
+        done_btn = QPushButton("✅ Готово")
+        done_btn.clicked.connect(self._accept)
+        btn_row.addWidget(done_btn)
+
+        layout.addLayout(btn_row)
+
+        self._render()
+
+    def _render(self):
+        if self._source.isNull():
+            return
+        pix = make_round_pixmap(
+            self._source, self.CANVAS_SIZE,
+            self._zoom, self._offset_x, self._offset_y,
+            dim_outside=True,
+            dim_alpha=0.40,
+        )
+        self.canvas.setPixmap(pix)
+        self.zoom_value.setText(f"{self._zoom:.2f}")
+        self.zoom_slider.blockSignals(True)
+        self.zoom_slider.setValue(int(self._zoom * 100))
+        self.zoom_slider.blockSignals(False)
+
+    def eventFilter(self, obj, event):
+        if obj is self.canvas:
+            if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+                self._dragging = True
+                self._drag_start = event.position().toPoint()
+                self._offset_at_drag = (self._offset_x, self._offset_y)
+                return True
+            if event.type() == QEvent.MouseMove and self._dragging:
+                delta = event.position().toPoint() - self._drag_start
+                self._offset_x = self._offset_at_drag[0] - delta.x() / self.CANVAS_SIZE
+                self._offset_y = self._offset_at_drag[1] - delta.y() / self.CANVAS_SIZE
+                self._render()
+                return True
+            if event.type() == QEvent.MouseButtonRelease and event.button() == Qt.LeftButton:
+                self._dragging = False
+                return True
+            if event.type() == QEvent.Wheel:
+                step = 0.05
+                if event.angleDelta().y() > 0:
+                    self._zoom = min(3.0, self._zoom + step)
+                else:
+                    self._zoom = max(0.5, self._zoom - step)
+                self._render()
+                return True
+        return super().eventFilter(obj, event)
+
+    def _on_zoom_slider(self, value):
+        self._zoom = value / 100.0
+        self._render()
+
+    def _reset(self):
+        self._zoom = 1.0
+        self._offset_x = 0.0
+        self._offset_y = 0.0
+        self._render()
+
+    def _accept(self):
+        self._result = (self._zoom, self._offset_x, self._offset_y)
+        self.accept()
+
+    def get_result(self):
+        return self._result
+
+
+# ======================================================
 # ПУЗЫРЁК СООБЩЕНИЯ
 # ======================================================
 
 class MessageBubble(QWidget):
     def __init__(self, text, is_user=False, sender="", palette_key="🌆 Неон",
-                 style_key="По умолчанию", show_sender=True, parent=None):
+                 style_key="По умолчанию", show_sender=True,
+                 avatar_name: str = "", character: dict = None, parent=None):
         super().__init__(parent)
         self.is_user = is_user
         self.sender_text = sender
         self.show_sender = show_sender
+        self.avatar_name = avatar_name or sender
+        self.character = character or {}
 
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(10, 6, 10, 6)
-        main_layout.setSpacing(0)
+        main_layout.setSpacing(10)
+
+        self.avatar = AvatarWidget(
+            self.avatar_name, size=40,
+            palette_key=palette_key, style_key=style_key,
+            is_user=is_user,
+            character=self.character
+        )
+        self.avatar.setAlignment(Qt.AlignTop)
+        self.avatar.setMinimumSize(40, 40)
+        self.avatar.setMaximumSize(40, 40)
 
         bubble_container = QWidget()
         bubble_container.setStyleSheet("background: transparent; border: none;")
@@ -405,7 +854,9 @@ class MessageBubble(QWidget):
         if is_user:
             main_layout.addStretch()
             main_layout.addWidget(bubble_container)
+            main_layout.addWidget(self.avatar)
         else:
+            main_layout.addWidget(self.avatar)
             main_layout.addWidget(bubble_container)
             main_layout.addStretch()
 
@@ -462,6 +913,9 @@ class MessageBubble(QWidget):
             self.name_label.setVisible(True)
         else:
             self.name_label.setVisible(False)
+
+        if hasattr(self, "avatar"):
+            self.avatar.update_palette(palette_key, style_key)
 
     def set_text(self, text):
         self.label.setText(text)
@@ -524,7 +978,7 @@ class NeoBrainChat(QMainWindow):
         self._reload_chat()
 
     # ============================================================
-    # ПРИМЕНЕНИЕ QSS
+    # QSS
     # ============================================================
 
     def _apply_qss_now(self):
@@ -535,6 +989,8 @@ class NeoBrainChat(QMainWindow):
         self.theme_btn.setText(f"🎯 {self.current_theme}")
         self.style_btn.setText(f"🎨 {self.current_style}")
         self.status_label.setText(f"🎯 {self.current_theme} • 🎨 {self.current_style}")
+        if hasattr(self, "_update_header_character"):
+            self._update_header_character()
         self.update()
         self.repaint()
 
@@ -552,18 +1008,15 @@ class NeoBrainChat(QMainWindow):
         if self._theme_animating:
             return
         self._theme_animating = True
-
         if self._overlay is None:
             self._overlay = FadeOverlay(self)
         self._overlay.resize(self.size())
-
         next_palette = get_effective_palette(self.current_theme, self.current_style)
         overlay_color = "#ffffff" if next_palette.get("light", False) else "#000000"
         self._overlay.set_color(overlay_color)
         self._overlay.set_opacity(0.0)
         self._overlay.raise_()
         self._overlay.show()
-
         self._fade_in = QPropertyAnimation(self._overlay._effect, b"opacity")
         self._fade_in.setDuration(130)
         self._fade_in.setStartValue(0.0)
@@ -579,10 +1032,11 @@ class NeoBrainChat(QMainWindow):
         self._refresh_bubbles_palette()
         self.theme_btn.setText(f"🎯 {self.current_theme}")
         self.style_btn.setText(f"🎨 {self.current_style}")
-        self.status_label.setText(f"🎯 {self.current_theme} • 🎨 {self.current_style}")
+        self.status_label.setText(f"🎯 {self.current_theme} • {self.current_style}")
+        if hasattr(self, "_update_header_character"):
+            self._update_header_character()
         self.update()
         self.repaint()
-
         self._fade_out = QPropertyAnimation(self._overlay._effect, b"opacity")
         self._fade_out.setDuration(220)
         self._fade_out.setStartValue(0.45)
@@ -633,7 +1087,6 @@ class NeoBrainChat(QMainWindow):
             self.save_settings()
 
     def _current_history(self):
-        """История для текущего персонажа (или без персонажа)."""
         if self.current_character:
             name = self.current_character.get("name")
             if name:
@@ -647,27 +1100,21 @@ class NeoBrainChat(QMainWindow):
         return self.settings["history_no_character"]
 
     def _reload_chat(self):
-        """Перерисовывает чат для текущего персонажа."""
         while self.chat_container_layout.count():
             child = self.chat_container_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-
         history = self._current_history()
         self.msg_counter = len(history)
-
         if history:
             for msg in history:
                 self.add_message(msg.get("sender", "NeoBrain"), msg.get("text", ""), restore=True)
         else:
             self.add_system_message("✦ NeoBrain", self.T["welcome"])
-
         self.msg_count_label.setText(self.T["msg_count"].format(count=self.msg_counter))
 
     def on_character_selected(self, index):
-        """Переключение персонажа из dropdown."""
         name = self.char_combo.itemData(index)
-
         if name is None:
             self.current_character = None
             self.settings["current_character"] = None
@@ -679,50 +1126,131 @@ class NeoBrainChat(QMainWindow):
             self.current_character = char
             self.settings["current_character"] = char
             self.char_info.setText(f"✓ {name} ({char.get('gender','')})")
-
         self.save_settings()
+        self._update_header_character()
         self._reload_chat()
 
+    def _update_header_character(self):
+        if not hasattr(self, "header_avatar"):
+            return
+        if self.current_character:
+            name = self.current_character.get("name", "")
+            self.header_avatar.update_name(name, self.current_character)
+            self.header_avatar.update_palette(self.current_theme, self.current_style)
+            self.header_avatar.setFixedSize(48, 48)
+            self.header_avatar.repaint()
+            self.header_char_name.setText(name)
+            desc = (self.current_character.get("personality")
+                    or self.current_character.get("description")
+                    or "Персонаж")
+            self.header_char_desc.setText(desc[:60] + ("…" if len(desc) > 60 else ""))
+        else:
+            self.header_avatar.update_name("", {})
+            self.header_avatar.update_palette(self.current_theme, self.current_style)
+            self.header_char_name.setText("Без персонажа")
+            self.header_char_desc.setText("Выберите персонажа в настройках")
+
     def delete_character(self):
-        """Удаляет текущего выбранного персонажа."""
         if not self.current_character:
             QMessageBox.information(self, "Удаление", "Персонаж не выбран.")
             return
-
         name = self.current_character.get("name")
         if not name:
             return
-
-        # Подтверждение
         answer = QMessageBox.question(
-            self,
-            "Удалить персонажа?",
+            self, "Удалить персонажа?",
             f"Удалить персонажа «{name}»?\nИстория чата будет потеряна.",
-            QMessageBox.Yes | QMessageBox.No
-        )
+            QMessageBox.Yes | QMessageBox.No)
         if answer != QMessageBox.Yes:
             return
-
-        # Удаляем из settings
         chars = self.settings.get("characters", {})
         if name in chars:
             del chars[name]
-
-        # Убираем из dropdown
+        delete_avatar(name)
         idx = self.char_combo.findData(name)
         if idx >= 0:
             self.char_combo.blockSignals(True)
             self.char_combo.removeItem(idx)
-            self.char_combo.setCurrentIndex(0)  # «Без персонажа»
+            self.char_combo.setCurrentIndex(0)
             self.char_combo.blockSignals(False)
-
-        # Сбрасываем текущего
         self.current_character = None
         self.settings["current_character"] = None
         self.char_info.setText("")
-
         self.save_settings()
+        self._update_header_character()
         self._reload_chat()
+
+    # ============================================================
+    # РЕДАКТОР АВАТАРА СУЩЕСТВУЮЩЕГО ПЕРСОНАЖА
+    # ============================================================
+
+    def edit_current_avatar(self):
+        if not self.current_character:
+            QMessageBox.information(self, "Аватар", "Персонаж не выбран.")
+            return
+        name = self.current_character.get("name")
+        if not name:
+            return
+
+        path = get_avatar_path(name)
+        if not path:
+            QMessageBox.information(self, "Аватар",
+                                     "У этого персонажа ещё нет аватара.\nЗагрузите изображение.")
+            return
+
+        pm = QPixmap(path)
+        if pm.isNull():
+            QMessageBox.warning(self, "Ошибка", "Не удалось загрузить аватар.")
+            return
+
+        dlg = AvatarEditorDialog(
+            pm,
+            palette_key=self.current_theme,
+            style_key=self.current_style,
+            initial_zoom=float(self.current_character.get("avatar_zoom", 1.0)),
+            initial_offset_x=float(self.current_character.get("avatar_offset_x", 0.0)),
+            initial_offset_y=float(self.current_character.get("avatar_offset_y", 0.0)),
+            parent=self
+        )
+        if dlg.exec_() == QDialog.Accepted:
+            result = dlg.get_result()
+            if result:
+                zoom, ox, oy = result
+                self.current_character["avatar_zoom"] = zoom
+                self.current_character["avatar_offset_x"] = ox
+                self.current_character["avatar_offset_y"] = oy
+                self.settings["characters"][name] = self.current_character
+                self.settings["current_character"] = self.current_character
+                self.save_settings()
+                self._update_header_character()
+                self._reload_chat()
+
+    # ============================================================
+    # РЕДАКТОР ПЕРСОНАЖА (полная модалка)
+    # ============================================================
+
+    def edit_current_character(self):
+        if not self.current_character:
+            QMessageBox.information(self, "Редактирование", "Персонаж не выбран.")
+            return
+        self.open_character(character_to_edit=self.current_character)
+
+    def _generate_prompt(self, name, gender, personality, desc):
+        prompt = f"Ты персонаж по имени {name}."
+        if gender == "мужской":
+            prompt += " Ты мужчина."
+            prompt += " Когда говоришь о себе в прошедшем времени — используй мужской род: 'я сделал', 'я понял', 'я пошёл', 'я сказал'."
+            prompt += " Не используй женские формы: 'сделала', 'поняла', 'пошла', 'сказала' — это ошибка."
+        else:
+            prompt += " Ты женщина."
+            prompt += " Когда говоришь о себе в прошедшем времени — используй женский род: 'я сделала', 'я поняла', 'я пошла', 'я сказала'."
+            prompt += " Не используй мужские формы: 'сделал', 'понял', 'пошёл', 'сказал' — это ошибка."
+        if personality:
+            prompt += f" Твой характер: {personality}."
+        if desc:
+            prompt += f" {desc}"
+        prompt += " Всегда оставайся в образе этого персонажа. Говори от первого лица."
+        return prompt
 
     # ============================================================
     # OLLAMA
@@ -737,7 +1265,6 @@ class NeoBrainChat(QMainWindow):
                 return
         except Exception:
             pass
-
         QMetaObject.invokeMethod(self, "_set_status_launch", Qt.QueuedConnection)
         try:
             kwargs = {}
@@ -747,7 +1274,6 @@ class NeoBrainChat(QMainWindow):
                 kwargs["start_new_session"] = True
             subprocess.Popen(["ollama", "serve"],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kwargs)
-
             for _ in range(20):
                 time.sleep(0.5)
                 try:
@@ -838,6 +1364,8 @@ class NeoBrainChat(QMainWindow):
         self.stream_checkbox.setText(self.T["stream_check"])
         self.char_label.setText(self.T["character"])
         self.char_btn.setText(self.T["create_character"])
+        self.edit_char_btn.setText(self.T["edit_character"])
+        self.edit_avatar_btn.setText(self.T["edit_avatar"])
         self.clear_btn.setText(self.T["clear"])
         self.input_field.setPlaceholderText(self.T["send_placeholder"])
         self.lang_btn.setText("Русский" if self.lang == "ru" else "English")
@@ -912,7 +1440,6 @@ class NeoBrainChat(QMainWindow):
         self.sidebar = QWidget()
         self.sidebar.setObjectName("sidebar")
         self.sidebar.setFixedWidth(self.sidebar_width)
-
         sl = QVBoxLayout(self.sidebar)
         sl.setContentsMargins(18, 20, 18, 20)
         sl.setSpacing(10)
@@ -928,7 +1455,6 @@ class NeoBrainChat(QMainWindow):
         self.toggle_btn.clicked.connect(self.toggle_sidebar)
         row.addWidget(self.toggle_btn)
         sl.addLayout(row)
-
         sl.addWidget(self._sep())
 
         self.theme_label = QLabel(self.T["theme"]); self.theme_label.setObjectName("muted")
@@ -942,7 +1468,6 @@ class NeoBrainChat(QMainWindow):
         self.style_btn = QPushButton(f"🎨 {self.current_style}")
         self.style_btn.clicked.connect(self.show_style_menu)
         sl.addWidget(self.style_btn)
-
         sl.addWidget(self._sep())
 
         self.model_label = QLabel(self.T["model"]); self.model_label.setObjectName("muted")
@@ -953,7 +1478,6 @@ class NeoBrainChat(QMainWindow):
         self.refresh_btn = QPushButton(self.T["refresh"]); self.refresh_btn.setObjectName("refresh_btn")
         self.refresh_btn.clicked.connect(lambda: threading.Thread(target=self.load_models, daemon=True).start())
         sl.addWidget(self.refresh_btn)
-
         sl.addWidget(self._sep())
 
         self.lang_label = QLabel("🌐 Язык / Language"); self.lang_label.setObjectName("muted")
@@ -968,7 +1492,6 @@ class NeoBrainChat(QMainWindow):
         self.stream_checkbox.setChecked(self.settings.get("stream_mode", True))
         self.stream_checkbox.stateChanged.connect(self.toggle_stream_mode)
         sl.addWidget(self.stream_checkbox)
-
         sl.addWidget(self._sep())
 
         self.char_label = QLabel(self.T["character"]); self.char_label.setObjectName("muted")
@@ -988,11 +1511,9 @@ class NeoBrainChat(QMainWindow):
                 self.char_combo.setCurrentIndex(idx)
         self.char_combo.currentIndexChanged.connect(self.on_character_selected)
 
-        # Кнопка удаления рядом с combo
         char_row = QHBoxLayout()
         char_row.setSpacing(6)
         char_row.addWidget(self.char_combo, 1)
-
         self.char_del_btn = QPushButton("🗑")
         self.char_del_btn.setObjectName("clear_btn")
         self.char_del_btn.setFixedWidth(40)
@@ -1001,8 +1522,21 @@ class NeoBrainChat(QMainWindow):
         self.char_del_btn.clicked.connect(self.delete_character)
         self.char_del_btn.setToolTip("Удалить текущего персонажа")
         char_row.addWidget(self.char_del_btn)
-
         sl.addLayout(char_row)
+
+        # Кнопка «✏ Редактировать персонажа» — НАД «Изменить аватар»
+        self.edit_char_btn = QPushButton(self.T["edit_character"])
+        self.edit_char_btn.setObjectName("refresh_btn")
+        self.edit_char_btn.setMinimumHeight(34)
+        self.edit_char_btn.clicked.connect(self.edit_current_character)
+        sl.addWidget(self.edit_char_btn)
+
+        # Кнопка «✏ Изменить аватар»
+        self.edit_avatar_btn = QPushButton(self.T["edit_avatar"])
+        self.edit_avatar_btn.setObjectName("refresh_btn")
+        self.edit_avatar_btn.setMinimumHeight(34)
+        self.edit_avatar_btn.clicked.connect(self.edit_current_avatar)
+        sl.addWidget(self.edit_avatar_btn)
 
         self.char_info = QLabel(""); self.char_info.setObjectName("muted")
         sl.addWidget(self.char_info)
@@ -1020,18 +1554,53 @@ class NeoBrainChat(QMainWindow):
 
         main_content = QWidget()
         ml.addWidget(main_content)
-
         mcl = QVBoxLayout(main_content)
         mcl.setContentsMargins(14, 14, 14, 14)
         mcl.setSpacing(10)
 
-        header = QWidget(); header.setObjectName("card"); header.setFixedHeight(58)
-        hl = QHBoxLayout(header); hl.setContentsMargins(28, 10, 28, 10)
+        header = QWidget(); header.setObjectName("card"); header.setFixedHeight(70)
+        hl = QHBoxLayout(header); hl.setContentsMargins(20, 10, 20, 10)
+        hl.setSpacing(14)
+
         title = QLabel("✦ NeoBrain"); title.setObjectName("title")
         hl.addWidget(title)
-        version = QLabel("v7.4"); version.setObjectName("muted")
+        version = QLabel("v8.0"); version.setObjectName("muted")
         hl.addWidget(version)
+
+        sep = QLabel("│"); sep.setObjectName("muted")
+        hl.addWidget(sep)
+
+        self.header_avatar = AvatarWidget(
+            self.current_character.get("name", "") if self.current_character else "",
+            size=48,
+            palette_key=self.current_theme,
+            style_key=self.current_style,
+            is_user=False,
+            character=self.current_character
+        )
+        hl.addWidget(self.header_avatar)
+
+        info_col = QVBoxLayout()
+        info_col.setContentsMargins(0, 0, 0, 0)
+        info_col.setSpacing(2)
+
+        self.header_char_name = QLabel(
+            self.current_character.get("name", "Без персонажа") if self.current_character else "Без персонажа"
+        )
+        self.header_char_name.setStyleSheet("font-size: 15px; font-weight: 700; background: transparent;")
+        info_col.addWidget(self.header_char_name)
+
+        self.header_char_desc = QLabel(
+            self.current_character.get("personality", "Выберите персонажа") if self.current_character
+            else "Выберите персонажа в настройках"
+        )
+        self.header_char_desc.setObjectName("muted")
+        self.header_char_desc.setStyleSheet("font-size: 11px; background: transparent;")
+        info_col.addWidget(self.header_char_desc)
+
+        hl.addLayout(info_col)
         hl.addStretch()
+
         self.status_label = QLabel(f"🎯 {self.current_theme} • 🎨 {self.current_style}")
         self.status_label.setObjectName("muted")
         hl.addWidget(self.status_label)
@@ -1096,17 +1665,14 @@ class NeoBrainChat(QMainWindow):
     def toggle_sidebar(self):
         self.sidebar_visible = not self.sidebar_visible
         target = self.sidebar_width if self.sidebar_visible else 0
-
         a1 = QPropertyAnimation(self.sidebar, b"minimumWidth")
         a1.setDuration(300); a1.setStartValue(self.sidebar.minimumWidth())
         a1.setEndValue(target); a1.setEasingCurve(QEasingCurve.InOutQuad); a1.start()
         self.sidebar_anim = a1
-
         a2 = QPropertyAnimation(self.sidebar, b"maximumWidth")
         a2.setDuration(300); a2.setStartValue(self.sidebar.maximumWidth())
         a2.setEndValue(target); a2.setEasingCurve(QEasingCurve.InOutQuad); a2.start()
         self.sidebar_max_anim = a2
-
         if self.sidebar_visible:
             self.sidebar_trigger_btn.setVisible(False)
             self.toggle_btn.setText(self.T["hide"])
@@ -1139,13 +1705,11 @@ class NeoBrainChat(QMainWindow):
     # ============================================================
 
     def _ai_name(self):
-        """Имя AI в чате — имя персонажа, если выбран, иначе 'NeoBrain'."""
         if self.current_character:
             return self.current_character.get("name", "NeoBrain")
         return "NeoBrain"
 
     def _is_ai_sender(self, sender):
-        """Проверяет — это сообщение от AI (NeoBrain или персонажа)?"""
         if sender in ("NeoBrain", "✦ NeoBrain"):
             return True
         if self.current_character and sender == self.current_character.get("name"):
@@ -1171,10 +1735,22 @@ class NeoBrainChat(QMainWindow):
             show_sender = True
             display_name = "Вы" if is_user else self._ai_name()
 
+        if is_user:
+            avatar_name = "Вы"
+            avatar_char = None
+        elif self.current_character:
+            avatar_name = self.current_character.get("name", "NeoBrain")
+            avatar_char = self.current_character
+        else:
+            avatar_name = "NeoBrain"
+            avatar_char = None
+
         bubble = MessageBubble(text, is_user=is_user, sender=display_name,
                                 palette_key=self.current_theme,
                                 style_key=self.current_style,
-                                show_sender=show_sender)
+                                show_sender=show_sender,
+                                avatar_name=avatar_name,
+                                character=avatar_char)
         self.chat_container_layout.addWidget(bubble)
         QTimer.singleShot(50, self.scroll_to_bottom)
 
@@ -1190,7 +1766,6 @@ class NeoBrainChat(QMainWindow):
             child = self.chat_container_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-
         self.msg_counter = 0
         self._current_history().clear()
         self.msg_count_label.setText(self.T["msg_count"].format(count=0))
@@ -1205,35 +1780,183 @@ class NeoBrainChat(QMainWindow):
         self.save_settings()
 
     # ============================================================
-    # ПЕРСОНАЖ
+    # ПЕРСОНАЖ (создание / редактирование)
     # ============================================================
 
-    def open_character(self):
+    def open_character(self, checked=False, character_to_edit=None):
+        is_edit = character_to_edit is not None
+        char_old_name = character_to_edit.get("name") if is_edit else None
+
         dialog = QDialog(self)
-        dialog.setWindowTitle(self.T["character_title"])
-        dialog.setFixedSize(520, 600)
+        if is_edit:
+            dialog.setWindowTitle(self.T["character_edit_title"])
+        else:
+            dialog.setWindowTitle(self.T["character_title"])
+        dialog.setFixedSize(560, 700)
         dialog.setStyleSheet(build_qss(self.current_theme, self.current_style))
 
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(28, 28, 28, 28)
         layout.setSpacing(12)
 
-        t = QLabel(self.T["character_title"]); t.setObjectName("title")
+        title_text = self.T["character_edit_title"] if is_edit else self.T["character_title"]
+        t = QLabel(title_text); t.setObjectName("title")
         layout.addWidget(t)
+
+        # ===== АВАТАР =====
+        # При редактировании — подтягиваем существующий
+        existing_path = get_avatar_path(char_old_name) if is_edit and char_old_name else None
+        existing_pixmap = None
+        if existing_path:
+            pm_tmp = QPixmap(existing_path)
+            if not pm_tmp.isNull():
+                existing_pixmap = pm_tmp
+
+        dlg_state = {
+            "source_pixmap": existing_pixmap,
+            "source_path": existing_path,
+            "zoom": float(character_to_edit.get("avatar_zoom", 1.0)) if is_edit else 1.0,
+            "offset_x": float(character_to_edit.get("avatar_offset_x", 0.0)) if is_edit else 0.0,
+            "offset_y": float(character_to_edit.get("avatar_offset_y", 0.0)) if is_edit else 0.0,
+        }
+
+        avatar_hint = QLabel(self.T["avatar_hint"]); avatar_hint.setObjectName("muted")
+        layout.addWidget(avatar_hint)
+
+        avatar_row = QHBoxLayout()
+        avatar_row.setSpacing(16)
+
+        avatar_preview = QLabel()
+        avatar_preview.setFixedSize(110, 110)
+        avatar_preview.setAlignment(Qt.AlignCenter)
+        avatar_preview.setStyleSheet(
+            "background: rgba(255,255,255,0.05);"
+            "border: 2px dashed rgba(255,255,255,0.15);"
+            "border-radius: 55px;"
+        )
+
+        def set_preview(name_for_letter=""):
+            src = dlg_state["source_pixmap"]
+            if src is not None and not src.isNull():
+                rounded = make_round_pixmap(
+                    src, 110,
+                    dlg_state["zoom"],
+                    dlg_state["offset_x"],
+                    dlg_state["offset_y"]
+                )
+                avatar_preview.setPixmap(rounded)
+            else:
+                name_now = name_for_letter or name_entry.text().strip() or "?"
+                pm = make_letter_avatar(name_now, 110, "#8b5cf6", "#00d4ff")
+                avatar_preview.setPixmap(pm)
+
+        def pick_avatar():
+            path, _ = QFileDialog.getOpenFileName(
+                dialog, "Выбрать аватар", "",
+                "Изображения (*.png *.jpg *.jpeg *.webp)"
+            )
+            if not path:
+                return
+            pm = QPixmap(path)
+            if pm.isNull():
+                QMessageBox.warning(dialog, "Ошибка", "Не удалось загрузить файл.")
+                return
+            dlg_state["source_pixmap"] = pm
+            dlg_state["source_path"] = path
+            dlg_state["zoom"] = 1.0
+            dlg_state["offset_x"] = 0.0
+            dlg_state["offset_y"] = 0.0
+
+            editor = AvatarEditorDialog(
+                pm,
+                palette_key=self.current_theme,
+                style_key=self.current_style,
+                initial_zoom=1.0,
+                initial_offset_x=0.0,
+                initial_offset_y=0.0,
+                parent=dialog
+            )
+            if editor.exec_() == QDialog.Accepted:
+                result = editor.get_result()
+                if result:
+                    dlg_state["zoom"], dlg_state["offset_x"], dlg_state["offset_y"] = result
+            set_preview()
+
+        def reset_avatar():
+            dlg_state["source_pixmap"] = None
+            dlg_state["source_path"] = None
+            dlg_state["zoom"] = 1.0
+            dlg_state["offset_x"] = 0.0
+            dlg_state["offset_y"] = 0.0
+            set_preview(name_entry.text().strip())
+
+        def edit_position():
+            src = dlg_state["source_pixmap"]
+            if src is None or src.isNull():
+                QMessageBox.information(dialog, "Аватар", self.T["avatar_load_first"])
+                return
+            editor = AvatarEditorDialog(
+                src,
+                palette_key=self.current_theme,
+                style_key=self.current_style,
+                initial_zoom=dlg_state["zoom"],
+                initial_offset_x=dlg_state["offset_x"],
+                initial_offset_y=dlg_state["offset_y"],
+                parent=dialog
+            )
+            if editor.exec_() == QDialog.Accepted:
+                result = editor.get_result()
+                if result:
+                    dlg_state["zoom"], dlg_state["offset_x"], dlg_state["offset_y"] = result
+                    set_preview()
+
+        avatar_col = QVBoxLayout()
+        avatar_col.setSpacing(8)
+
+        pick_btn = QPushButton(self.T["avatar_upload"])
+        pick_btn.setMinimumHeight(32)
+        pick_btn.clicked.connect(pick_avatar)
+        avatar_col.addWidget(pick_btn)
+
+        edit_btn = QPushButton("🎨 Настроить")
+        edit_btn.setObjectName("refresh_btn")
+        edit_btn.setMinimumHeight(32)
+        edit_btn.clicked.connect(edit_position)
+        avatar_col.addWidget(edit_btn)
+
+        reset_btn = QPushButton(self.T["avatar_reset"])
+        reset_btn.setObjectName("refresh_btn")
+        reset_btn.setMinimumHeight(32)
+        reset_btn.clicked.connect(reset_avatar)
+        avatar_col.addWidget(reset_btn)
+        avatar_col.addStretch()
+
+        avatar_row.addWidget(avatar_preview)
+        avatar_row.addLayout(avatar_col)
+        avatar_row.addStretch()
+        layout.addLayout(avatar_row)
 
         layout.addWidget(QLabel(self.T["character_name"]))
         name_entry = QLineEdit(); name_entry.setMinimumHeight(42)
         layout.addWidget(name_entry)
 
-        layout.addWidget(QLabel(self.T["character_gender"]))
+        if is_edit and char_old_name:
+            name_entry.setText(char_old_name)
 
+        def on_name_changed(text):
+            if dlg_state["source_pixmap"] is None:
+                set_preview(text.strip() or "?")
+
+        name_entry.textChanged.connect(on_name_changed)
+        set_preview((char_old_name or "?"))
+
+        layout.addWidget(QLabel(self.T["character_gender"]))
         ggroup = QButtonGroup(dialog)
         ggroup.setExclusive(True)
-
         gl = QHBoxLayout(); gl.setSpacing(14)
 
         male = QPushButton(self.T["character_male"])
-        male.setCheckable(True); male.setChecked(True); male.setFixedHeight(46)
+        male.setCheckable(True); male.setFixedHeight(46)
         ggroup.addButton(male, 0)
         gl.addWidget(male)
 
@@ -1241,11 +1964,18 @@ class NeoBrainChat(QMainWindow):
         female.setCheckable(True); female.setFixedHeight(46)
         ggroup.addButton(female, 1)
         gl.addWidget(female)
-
         gl.addStretch()
         layout.addLayout(gl)
 
-        # Подсказка о выбранном поле
+        # Устанавливаем текущий пол
+        if is_edit:
+            if character_to_edit.get("gender") == "женский":
+                female.setChecked(True)
+            else:
+                male.setChecked(True)
+        else:
+            male.setChecked(True)
+
         gender_hint = QLabel()
         gender_hint.setObjectName("muted")
         gender_hint.setWordWrap(True)
@@ -1263,15 +1993,29 @@ class NeoBrainChat(QMainWindow):
         layout.addWidget(QLabel(self.T["character_personality"]))
         p_entry = QLineEdit(); p_entry.setMinimumHeight(42)
         layout.addWidget(p_entry)
+        if is_edit:
+            p_entry.setText(character_to_edit.get("personality", ""))
 
         layout.addWidget(QLabel(self.T["character_desc"]))
         d_entry = QTextEdit(); d_entry.setMinimumHeight(70)
         layout.addWidget(d_entry)
+        if is_edit:
+            d_entry.setPlainText(character_to_edit.get("description", ""))
 
         layout.addStretch()
         bl = QHBoxLayout()
-        save = QPushButton(self.T["character_create"])
-        save.clicked.connect(lambda: self.save_character(name_entry, ggroup, p_entry, d_entry, dialog))
+
+        save_label = self.T["character_save"] if is_edit else self.T["character_create"]
+        save = QPushButton(save_label)
+        save.clicked.connect(lambda: self.save_character(
+            name_entry, ggroup, p_entry, d_entry, dialog,
+            source_path=dlg_state["source_path"],
+            zoom=dlg_state["zoom"],
+            offset_x=dlg_state["offset_x"],
+            offset_y=dlg_state["offset_y"],
+            is_edit=is_edit,
+            old_name=char_old_name,
+        ))
         bl.addWidget(save)
         cancel = QPushButton(self.T["character_cancel"])
         cancel.clicked.connect(dialog.reject)
@@ -1279,10 +2023,21 @@ class NeoBrainChat(QMainWindow):
         layout.addLayout(bl)
         dialog.exec_()
 
-    def save_character(self, name_entry, gender_group, personality_entry, desc_entry, dialog):
+    def save_character(self, name_entry, gender_group, personality_entry, desc_entry, dialog,
+                        source_path=None, zoom=1.0, offset_x=0.0, offset_y=0.0,
+                        is_edit=False, old_name=None):
         name = name_entry.text().strip()
         if not name:
             QMessageBox.warning(self, self.T["character_error"], self.T["character_error_name"])
+            return
+
+        # Проверка занятости имени (только если меняется или создаём)
+        chars = self.settings.get("characters", {})
+        if (not is_edit and name in chars) or (is_edit and name != old_name and name in chars):
+            QMessageBox.warning(
+                self, self.T["character_error"],
+                self.T["character_error_exists"].format(name=name)
+            )
             return
 
         gender = "мужской" if gender_group.checkedId() == 0 else "женский"
@@ -1290,50 +2045,80 @@ class NeoBrainChat(QMainWindow):
         personality = personality_entry.text().strip()
         desc = desc_entry.toPlainText().strip()
 
-        prompt = f"Ты персонаж по имени {name}."
-        if gender == "мужской":
-            prompt += " Ты мужчина."
-            prompt += " Когда говоришь о себе в прошедшем времени — используй мужской род: 'я сделал', 'я понял', 'я пошёл', 'я сказал'."
-            prompt += " Не используй женские формы: 'сделала', 'поняла', 'пошла', 'сказала' — это ошибка."
-        else:
-            prompt += " Ты женщина."
-            prompt += " Когда говоришь о себе в прошедшем времени — используй женский род: 'я сделала', 'я поняла', 'я пошла', 'я сказала'."
-            prompt += " Не используй мужские формы: 'сделал', 'понял', 'пошёл', 'сказал' — это ошибка."
-        if personality:
-            prompt += f" Твой характер: {personality}."
-        if desc:
-            prompt += f" {desc}"
-        prompt += " Всегда оставайся в образе этого персонажа. Говори от первого лица."
+        prompt = self._generate_prompt(name, gender, personality, desc)
 
-        self.current_character = {
+        # Сохраняем старую историю, если редактируем
+        old_history = []
+        if is_edit and old_name and old_name in chars:
+            old_history = chars[old_name].get("history", [])
+
+        new_char = {
             "name": name,
             "gender": gender,
             "personality": personality,
             "description": desc,
             "prompt": prompt,
             "pronoun": pronoun,
+            "history": old_history if is_edit else [],
+            "avatar_zoom": float(zoom),
+            "avatar_offset_x": float(offset_x),
+            "avatar_offset_y": float(offset_y),
         }
-        # Пустая история для нового персонажа
-        self.current_character["history"] = []
 
-        self.settings["current_character"] = self.current_character
-        self.settings["characters"][name] = self.current_character
+        # Обновляем аватар-файл, если был выбран новый
+        if source_path and os.path.exists(source_path):
+            saved = save_avatar(name, source_path)
+            if saved:
+                new_char["avatar_path"] = saved
+
+        # Если редактирование со сменой имени — переименовываем папку аватара
+        if is_edit and old_name and old_name != name:
+            rename_avatar_folder(old_name, name)
+            # Обновляем avatar_path
+            new_path = get_avatar_path(name)
+            if new_path:
+                new_char["avatar_path"] = new_path
+
+        # Сохраняем
+        if is_edit and old_name and old_name != name:
+            # Удаляем старую запись
+            if old_name in chars:
+                del chars[old_name]
+
+        self.settings["characters"][name] = new_char
+        self.current_character = new_char
+        self.settings["current_character"] = new_char
         self.save_settings()
 
+        self._update_header_character()
         self.char_info.setText(f"✓ {name} ({gender})")
-        self.add_system_message("✦ NeoBrain", self.T["character_created"].format(name=name, gender=gender))
 
-        # Обновляем dropdown
-        idx = self.char_combo.findData(name)
-        if idx < 0:
-            self.char_combo.addItem(f"👤 {name}", name)
-            idx = self.char_combo.findData(name)
-        self.char_combo.blockSignals(True)
-        self.char_combo.setCurrentIndex(idx)
-        self.char_combo.blockSignals(False)
+        if is_edit:
+            if old_name and old_name != name:
+                msg = self.T["character_renamed"].format(old=old_name, new=name)
+            else:
+                msg = self.T["character_updated"].format(name=name)
+        else:
+            msg = self.T["character_created"].format(name=name, gender=gender)
+        self.add_system_message("✦ NeoBrain", msg)
+
+        # Обновляем комбобокс
+        self._rebuild_char_combo(select_name=name)
 
         self._reload_chat()
         dialog.accept()
+
+    def _rebuild_char_combo(self, select_name=None):
+        self.char_combo.blockSignals(True)
+        self.char_combo.clear()
+        self.char_combo.addItem("— Без персонажа —", None)
+        for cname in self.settings.get("characters", {}).keys():
+            self.char_combo.addItem(f"👤 {cname}", cname)
+        if select_name:
+            idx = self.char_combo.findData(select_name)
+            if idx >= 0:
+                self.char_combo.setCurrentIndex(idx)
+        self.char_combo.blockSignals(False)
 
     # ============================================================
     # ОТПРАВКА
@@ -1352,9 +2137,13 @@ class NeoBrainChat(QMainWindow):
         self.typing_label.setText(self.T["status_typing"])
         self.add_message("Вы", text)
 
+        ai_avatar_name = (self.current_character.get("name", "NeoBrain")
+                          if self.current_character else "NeoBrain")
         ai_bubble = MessageBubble("", is_user=False, sender=self._ai_name(),
                                    palette_key=self.current_theme,
-                                   style_key=self.current_style)
+                                   style_key=self.current_style,
+                                   avatar_name=ai_avatar_name,
+                                   character=self.current_character)
         self.chat_container_layout.addWidget(ai_bubble)
         self.scroll_to_bottom()
 
@@ -1448,4 +2237,4 @@ if __name__ == "__main__":
     app.setStyle("Fusion")
     window = NeoBrainChat()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec_())    

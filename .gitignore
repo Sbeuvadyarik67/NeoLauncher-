@@ -72,3 +72,9 @@ desktop.ini
 !dist/NeoLauncher.exe
 
 *_backup.py
+
+# ============================================================
+# NEOBRAIN — АВАТАРЫ ПОЛЬЗОВАТЕЛЯ
+# ============================================================
+projects/NeoBrain/avatars/*
+!projects/NeoBrain/avatars/.gitkeep
