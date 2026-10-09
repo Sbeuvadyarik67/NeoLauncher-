@@ -1,18 +1,21 @@
 {
   "projects": {
     "neobrain": {
-      "name": "🧠 NeoBrain v7.4",
-      "version": "7.4.0",
+      "name": "🧠 NeoBrain v8.0",
+      "version": "8.0.0",
       "path": "projects/neobrain.py",
       "icon": "🧠",
       "color": "#00d4ff",
-      "description": "Локальный AI-чат с персонажами, потоковым режимом, переключением языков и кнопкой остановки",
+      "description": "Локальный AI-чат с персонажами, потоковым режимом, редактированием персонажа, аватарами и 7 анимированными фонами",
       "tags": [
         "AI",
         "Chat",
         "Neon",
         "Characters",
-        "Streaming"
+        "Streaming",
+        "Avatars",
+        "Backgrounds",
+        "Editing"
       ],
       "type": "python",
       "launches": 0,

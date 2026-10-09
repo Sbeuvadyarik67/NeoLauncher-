@@ -78,3 +78,6 @@ desktop.ini
 # ============================================================
 projects/NeoBrain/avatars/*
 !projects/NeoBrain/avatars/.gitkeep
+
+# Бэкапы NeoBrain
+projects/neobrain_backup_*.py

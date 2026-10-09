@@ -2,6 +2,8 @@ import sys
 import json
 import os
 import threading
+import random
+import math
 import requests
 import subprocess
 import time
@@ -54,6 +56,21 @@ LANGUAGES = {
         "avatar_zoom": "🔍 Масштаб",
         "avatar_done": "✅ Готово", "avatar_cancel": "Отмена", "avatar_reset_pos": "↺ Сброс",
         "avatar_load_first": "Сначала загрузите аватар",
+        "background_section": "🌈 Фон",
+        "background_label": "Анимированный фон:",
+        "background_none": "— Без фона —",
+        "bg_neon": "🌆 Neon",
+        "bg_aurora": "🌌 Aurora",
+        "bg_sunset": "🌅 Sunset",
+        "bg_matrix": "💚 Matrix",
+        "bg_sakura": "🌸 Sakura",
+        "bg_ocean": "🌊 Deep Ocean",
+        "bg_ember": "🔥 Ember",
+        "background_speed": "⚡ Скорость:",
+        "background_particles": "✨ Частицы",
+        "background_animate": "🎬 Анимация",
+        "background_translucent": "🔮 Прозрачные панели",
+        "bg_changed": "🌈 Фон: {name}",
     },
     "en": {
         "title": "✦ NeoBrain", "settings": "✦ Settings", "hide": "◀ Hide", "show": "▶ Show",
@@ -93,6 +110,21 @@ LANGUAGES = {
         "avatar_zoom": "🔍 Zoom",
         "avatar_done": "✅ Done", "avatar_cancel": "Cancel", "avatar_reset_pos": "↺ Reset",
         "avatar_load_first": "Load an avatar first",
+        "background_section": "🌈 Background",
+        "background_label": "Animated background:",
+        "background_none": "— No background —",
+        "bg_neon": "🌆 Neon",
+        "bg_aurora": "🌌 Aurora",
+        "bg_sunset": "🌅 Sunset",
+        "bg_matrix": "💚 Matrix",
+        "bg_sakura": "🌸 Sakura",
+        "bg_ocean": "🌊 Deep Ocean",
+        "bg_ember": "🔥 Ember",
+        "background_speed": "⚡ Speed:",
+        "background_particles": "✨ Particles",
+        "background_animate": "🎬 Animation",
+        "background_translucent": "🔮 Translucent panels",
+        "bg_changed": "🌈 Background: {name}",
     }
 }
 
@@ -138,6 +170,7 @@ STYLES = {
     "💻 Terminal":  {"radius": 4,  "btn_radius": 2,  "send_radius": 4,
                      "font": "'Consolas', 'Courier New', monospace", "font_size": 14, "input_font": 14},
 }
+
 
 # ======================================================
 # АВАТАРЫ
@@ -218,10 +251,6 @@ def delete_avatar(character_name: str) -> bool:
 
 
 def rename_avatar_folder(old_name: str, new_name: str) -> bool:
-    """
-    Переименовывает папку аватара при смене имени персонажа.
-    Возвращает True при успехе, False если нечего переименовывать.
-    """
     if not old_name or not new_name or old_name == new_name:
         return False
     old_safe = _safe_name(old_name)
@@ -234,7 +263,6 @@ def rename_avatar_folder(old_name: str, new_name: str) -> bool:
         return False
     try:
         if os.path.isdir(new_folder):
-            # Если новая папка существует — копируем содержимое и удаляем старую
             for f in os.listdir(old_folder):
                 shutil.copy2(os.path.join(old_folder, f), os.path.join(new_folder, f))
             shutil.rmtree(old_folder, ignore_errors=True)
@@ -554,6 +582,298 @@ QSlider::handle:horizontal:hover {{
     background: {p['accent2']};
 }}
 """
+
+# ======================================================
+# АНИМИРОВАННЫЕ ФОНЫ
+# ======================================================
+
+BACKGROUNDS = {
+    "neon": {
+        "name": "🌆 Neon",
+        "colors": [QColor("#0a0512"), QColor("#1a0a2e"), QColor("#0a1a2a")],
+        "particle": "spark",
+        "particle_color": QColor("#ff2d8a"),
+        "particle_color2": QColor("#00d4ff"),
+    },
+    "aurora": {
+        "name": "🌌 Aurora",
+        "colors": [QColor("#0a1420"), QColor("#0d2233"), QColor("#102a3a")],
+        "particle": "snow",
+        "particle_color": QColor("#a5f3fc"),
+        "particle_color2": QColor("#67e8f9"),
+    },
+    "sunset": {
+        "name": "🌅 Sunset",
+        "colors": [QColor("#1a0a1e"), QColor("#2a0a24"), QColor("#1a0a1e")],
+        "particle": "dust",
+        "particle_color": QColor("#fbbf24"),
+        "particle_color2": QColor("#ff7b72"),
+    },
+    "matrix": {
+        "name": "💚 Matrix",
+        "colors": [QColor("#000000"), QColor("#001a08"), QColor("#000000")],
+        "particle": "code",
+        "particle_color": QColor("#22c55e"),
+        "particle_color2": QColor("#10b981"),
+    },
+    "sakura": {
+        "name": "🌸 Sakura",
+        "colors": [QColor("#1a0a1e"), QColor("#2a1024"), QColor("#1a0a1e")],
+        "particle": "petal",
+        "particle_color": QColor("#f9a8d4"),
+        "particle_color2": QColor("#c084fc"),
+    },
+    "ocean": {
+        "name": "🌊 Deep Ocean",
+        "colors": [QColor("#020617"), QColor("#0c4a6e"), QColor("#082f49")],
+        "particle": "bubble",
+        "particle_color": QColor("#0ea5e9"),
+        "particle_color2": QColor("#06b6d4"),
+    },
+    "ember": {
+        "name": "🔥 Ember",
+        "colors": [QColor("#1a0a05"), QColor("#2a0a08"), QColor("#1a0505")],
+        "particle": "spark",
+        "particle_color": QColor("#ff6b35"),
+        "particle_color2": QColor("#ffd93d"),
+    },
+}
+
+
+class Particle:
+    """Одна частица для анимированного фона."""
+
+    def __init__(self, w, h, kind, color, color2):
+        self.w = w
+        self.h = h
+        self.kind = kind
+        self.color = color
+        self.color2 = color2
+        self.reset(initial=True)
+
+    def reset(self, initial=False):
+        w, h = self.w, self.h
+        self.alpha = random.uniform(0.3, 1.0)
+        if self.kind == "spark":
+            self.x = random.uniform(0, w)
+            self.y = h + random.uniform(0, h) if initial else h + 10
+            self.vx = random.uniform(-15, 15)
+            self.vy = random.uniform(-60, -20)
+            self.size = random.uniform(1.5, 3.5)
+        elif self.kind == "snow":
+            self.x = random.uniform(0, w)
+            self.y = random.uniform(-h, 0) if initial else -10
+            self.vx = random.uniform(-20, 20)
+            self.vy = random.uniform(20, 60)
+            self.size = random.uniform(1.5, 3)
+        elif self.kind == "dust":
+            self.x = random.uniform(0, w)
+            self.y = random.uniform(0, h)
+            self.vx = random.uniform(-25, 25)
+            self.vy = random.uniform(-15, 15)
+            self.size = random.uniform(1, 2.5)
+        elif self.kind == "code":
+            self.x = random.uniform(0, w)
+            self.y = random.uniform(-h, 0) if initial else -20
+            self.vx = 0
+            self.vy = random.uniform(80, 180)
+            self.size = random.uniform(10, 16)
+        elif self.kind == "petal":
+            self.x = random.uniform(0, w)
+            self.y = random.uniform(-h, 0) if initial else -10
+            self.vx = random.uniform(-30, 30)
+            self.vy = random.uniform(15, 40)
+            self.size = random.uniform(3, 6)
+            self.phase = random.uniform(0, math.tau)
+        elif self.kind == "bubble":
+            self.x = random.uniform(0, w)
+            self.y = h + random.uniform(0, h) if initial else h + 10
+            self.vx = random.uniform(-10, 10)
+            self.vy = random.uniform(-40, -15)
+            self.size = random.uniform(2, 5)
+
+    def update(self, dt):
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        if self.kind == "petal":
+            self.phase = getattr(self, "phase", 0) + dt * 3
+            self.x += math.sin(self.phase) * 15 * dt
+        if self.kind in ("spark", "bubble"):
+            if self.y < -20:
+                self.reset()
+        elif self.kind in ("snow", "code", "petal"):
+            if self.y > self.h + 20:
+                self.reset()
+        elif self.kind == "dust":
+            if self.x < -20 or self.x > self.w + 20 or self.y < -20 or self.y > self.h + 20:
+                self.reset()
+
+
+class AnimatedBackground(QWidget):
+    """Виджет с анимированным градиентом и частицами."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WA_NoSystemBackground, True)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+
+        self._bg_id = None
+        self._target_bg_id = None
+        self._bg_data = None
+        self._target_bg_data = None
+        self._transition = 1.0
+
+        self._particles = []
+        self._particles_enabled = True
+        self._animation_enabled = True
+        self._time_offset = 0.0
+        self._speed = 20.0
+
+        self._timer = QTimer(self)
+        self._timer.setInterval(int(1000 / 30))
+        self._timer.timeout.connect(self._tick)
+        self._timer.start()
+
+        self._last_time = time.time()
+
+    def set_background(self, bg_id: str):
+        if bg_id == self._bg_id and self._bg_data is not None:
+            return
+        if bg_id is None or bg_id not in BACKGROUNDS:
+            self._target_bg_id = None
+            self._target_bg_data = None
+            self._transition = 0.0
+            return
+        if self._bg_id is None:
+            self._bg_id = bg_id
+            self._bg_data = BACKGROUNDS[bg_id]
+            self._target_bg_id = bg_id
+            self._target_bg_data = self._bg_data
+            self._transition = 1.0
+            self._spawn_particles()
+        else:
+            self._target_bg_id = bg_id
+            self._target_bg_data = BACKGROUNDS[bg_id]
+            self._transition = 0.0
+            self._spawn_particles_for(self._target_bg_data)
+
+    def set_particles_enabled(self, enabled: bool):
+        self._particles_enabled = enabled
+
+    def set_animation_enabled(self, enabled: bool):
+        self._animation_enabled = enabled
+        if enabled:
+            self._last_time = time.time()
+            self._timer.start()
+        else:
+            self._timer.stop()
+
+    def set_speed(self, seconds: float):
+        self._speed = max(3.0, float(seconds))
+
+    def _spawn_particles(self):
+        if not self._bg_data:
+            self._particles = []
+            return
+        self._spawn_particles_for(self._bg_data)
+
+    def _spawn_particles_for(self, bg_data):
+        w = max(1, self.width())
+        h = max(1, self.height())
+        count = 80
+        self._particles = [
+            Particle(w, h, bg_data["particle"],
+                     bg_data["particle_color"], bg_data["particle_color2"])
+            for _ in range(count)
+        ]
+
+    def _tick(self):
+        now = time.time()
+        dt = now - self._last_time
+        self._last_time = now
+        if dt > 0.1:
+            dt = 0.1
+
+        if self._transition < 1.0 and self._target_bg_data is not None:
+            self._transition = min(1.0, self._transition + dt / 1.5)
+            if self._transition >= 1.0:
+                self._bg_id = self._target_bg_id
+                self._bg_data = self._target_bg_data
+
+        self._time_offset += dt * (60.0 / self._speed)
+
+        if self._particles_enabled:
+            for p in self._particles:
+                p.update(dt)
+
+        self.update()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self._bg_data:
+            self._spawn_particles_for(self._bg_data)
+
+    def paintEvent(self, event):
+        if self._bg_data is None and self._target_bg_data is None:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        w = self.width()
+        h = self.height()
+
+        if self._transition < 1.0 and self._target_bg_data is not None:
+            self._draw_gradient(painter, self._bg_data, w, h, 1.0 - self._transition)
+            self._draw_gradient(painter, self._target_bg_data, w, h, self._transition)
+        else:
+            self._draw_gradient(painter, self._bg_data or self._target_bg_data, w, h, 1.0)
+
+        if self._particles_enabled and self._particles:
+            for p in self._particles:
+                self._draw_particle(painter, p)
+
+        painter.end()
+
+    def _draw_gradient(self, painter, bg_data, w, h, alpha_factor):
+        if not bg_data:
+            return
+        colors = bg_data["colors"]
+        grad = QLinearGradient(0, 0, w, h)
+        for i, c in enumerate(colors):
+            c2 = QColor(c)
+            c2.setAlphaF(alpha_factor)
+            grad.setColorAt(i / max(1, len(colors) - 1), c2)
+        painter.fillRect(0, 0, w, h, QBrush(grad))
+
+    def _draw_particle(self, painter, p):
+        color = p.color
+        c = QColor(color)
+        alpha = p.alpha
+        if p.kind == "spark":
+            alpha *= 0.7 + 0.3 * math.sin(self._time_offset * 5 + p.x)
+        elif p.kind == "snow":
+            alpha *= 0.8 + 0.2 * math.sin(self._time_offset * 2 + p.y * 0.01)
+        c.setAlphaF(min(1.0, max(0.0, alpha)))
+        painter.setBrush(QBrush(c))
+        painter.setPen(Qt.NoPen)
+
+        if p.kind == "code":
+            painter.setPen(QPen(c, 1))
+            font = QFont("Consolas", int(p.size))
+            painter.setFont(font)
+            char = random.choice("01")
+            painter.drawText(int(p.x), int(p.y), char)
+        elif p.kind == "petal":
+            painter.save()
+            painter.translate(p.x, p.y)
+            painter.rotate(math.degrees(self._time_offset * 40 + p.x))
+            painter.drawEllipse(QPointF(0, 0), p.size, p.size * 0.5)
+            painter.restore()
+        else:
+            painter.drawEllipse(QPointF(p.x, p.y), p.size, p.size)
+
+
 
 
 # ======================================================
@@ -957,6 +1277,12 @@ class NeoBrainChat(QMainWindow):
         self._theme_animating = False
         self._overlay = None
 
+        self.bg_id = self.settings.get("bg_id", None)
+        self.bg_particles = bool(self.settings.get("bg_particles", True))
+        self.bg_animate = bool(self.settings.get("bg_animate", True))
+        self.bg_translucent = bool(self.settings.get("bg_translucent", False))
+        self.bg_speed = float(self.settings.get("bg_speed", 20.0))
+
         self.setWindowTitle(self.T["title"])
         self.resize(1200, 800)
         self.setMinimumSize(960, 600)
@@ -971,6 +1297,7 @@ class NeoBrainChat(QMainWindow):
         self.sig_scroll.connect(self._do_scroll)
 
         self._apply_qss_now()
+        self._init_background()
 
         self.status_text.setText(self.T["status_checking"])
         threading.Thread(target=self._check_ollama_async, daemon=True).start()
@@ -978,11 +1305,70 @@ class NeoBrainChat(QMainWindow):
         self._reload_chat()
 
     # ============================================================
+    # ФОН
+    # ============================================================
+
+    def _init_background(self):
+        self.background = AnimatedBackground(self)
+        self.background.setGeometry(self.rect())
+        self.background.lower()
+        self.background.show()
+
+        self.background.set_speed(self.bg_speed)
+        self.background.set_particles_enabled(self.bg_particles)
+        self.background.set_animation_enabled(self.bg_animate)
+        if self.bg_id and self.bg_id in BACKGROUNDS:
+            self.background.set_background(self.bg_id)
+
+    def _apply_background(self, bg_id):
+        self.bg_id = bg_id if (bg_id and bg_id in BACKGROUNDS) else None
+        self.settings["bg_id"] = self.bg_id
+        self.save_settings()
+        if hasattr(self, "background"):
+            self.background.set_background(self.bg_id)
+        if hasattr(self, "bg_status_label"):
+            name = BACKGROUNDS[self.bg_id]["name"] if self.bg_id else self.T["background_none"]
+            self.bg_status_label.setText(name)
+
+    def _toggle_particles(self, state):
+        self.bg_particles = bool(state)
+        self.settings["bg_particles"] = self.bg_particles
+        self.save_settings()
+        if hasattr(self, "background"):
+            self.background.set_particles_enabled(self.bg_particles)
+
+    def _toggle_animation(self, state):
+        self.bg_animate = bool(state)
+        self.settings["bg_animate"] = self.bg_animate
+        self.save_settings()
+        if hasattr(self, "background"):
+            self.background.set_animation_enabled(self.bg_animate)
+
+    def _toggle_translucent(self, state):
+        self.bg_translucent = bool(state)
+        self.settings["bg_translucent"] = self.bg_translucent
+        self.save_settings()
+        self._apply_qss_now()
+
+    def _on_speed_change(self, value):
+        self.bg_speed = float(value)
+        self.settings["bg_speed"] = self.bg_speed
+        self.save_settings()
+        if hasattr(self, "background"):
+            self.background.set_speed(self.bg_speed)
+        if hasattr(self, "bg_speed_value"):
+            self.bg_speed_value.setText(f"{int(value)}s")
+
+    # ============================================================
     # QSS
     # ============================================================
 
     def _apply_qss_now(self):
         qss = build_qss(self.current_theme, self.current_style)
+        if self.bg_translucent:
+            p = get_effective_palette(self.current_theme, self.current_style)
+            qss = qss.replace(p["card"], "rgba(20,20,30,0.55)")
+            qss = qss.replace(p["bg"], "rgba(10,10,20,0.55)")
         self.setStyleSheet("")
         self.setStyleSheet(qss)
         self._refresh_bubbles_palette()
@@ -1027,6 +1413,10 @@ class NeoBrainChat(QMainWindow):
 
     def _smooth_middle(self):
         qss = build_qss(self.current_theme, self.current_style)
+        if self.bg_translucent:
+            p = get_effective_palette(self.current_theme, self.current_style)
+            qss = qss.replace(p["card"], "rgba(20,20,30,0.55)")
+            qss = qss.replace(p["bg"], "rgba(10,10,20,0.55)")
         self.setStyleSheet("")
         self.setStyleSheet(qss)
         self._refresh_bubbles_palette()
@@ -1059,7 +1449,9 @@ class NeoBrainChat(QMainWindow):
             "ollama_url": "http://localhost:11434", "model": "llama3.2:3b", "temperature": 0.7,
             "theme": "🌆 Неон", "style": "По умолчанию",
             "current_character": None, "characters": {}, "history": [],
-            "auto_save": True, "stream_mode": True, "max_tokens": 512, "lang": "ru"
+            "auto_save": True, "stream_mode": True, "max_tokens": 512, "lang": "ru",
+            "bg_id": None, "bg_particles": True, "bg_animate": True,
+            "bg_translucent": False, "bg_speed": 20.0,
         }
         try:
             if os.path.exists(path):
@@ -1252,6 +1644,8 @@ class NeoBrainChat(QMainWindow):
         prompt += " Всегда оставайся в образе этого персонажа. Говори от первого лица."
         return prompt
 
+    
+
     # ============================================================
     # OLLAMA
     # ============================================================
@@ -1370,6 +1764,14 @@ class NeoBrainChat(QMainWindow):
         self.input_field.setPlaceholderText(self.T["send_placeholder"])
         self.lang_btn.setText("Русский" if self.lang == "ru" else "English")
         self.msg_count_label.setText(self.T["msg_count"].format(count=self.msg_counter))
+        if hasattr(self, "bg_label"):
+            self.bg_label.setText(self.T["background_label"])
+            self.bg_speed_label.setText(self.T["background_speed"])
+            self.bg_particles_cb.setText(self.T["background_particles"])
+            self.bg_animate_cb.setText(self.T["background_animate"])
+            self.bg_translucent_cb.setText(self.T["background_translucent"])
+            # перестроить dropdown
+            self._rebuild_bg_combo()
 
     # ============================================================
     # МЕНЮ ТЕМ / СТИЛЕЙ
@@ -1430,6 +1832,24 @@ class NeoBrainChat(QMainWindow):
         s.setFixedHeight(1)
         return s
 
+    def _rebuild_bg_combo(self):
+        """Перестроить dropdown фонов при смене языка."""
+        if not hasattr(self, "bg_combo"):
+            return
+        self.bg_combo.blockSignals(True)
+        self.bg_combo.clear()
+        self.bg_combo.addItem(self.T["background_none"], None)
+        for bg_id, bg_data in BACKGROUNDS.items():
+            # локализованное имя
+            key = f"bg_{bg_id}"
+            label = self.T.get(key, bg_data["name"])
+            self.bg_combo.addItem(label, bg_id)
+        # установить текущий
+        idx = self.bg_combo.findData(self.bg_id)
+        if idx >= 0:
+            self.bg_combo.setCurrentIndex(idx)
+        self.bg_combo.blockSignals(False)
+
     def setup_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
@@ -1470,6 +1890,59 @@ class NeoBrainChat(QMainWindow):
         sl.addWidget(self.style_btn)
         sl.addWidget(self._sep())
 
+        # === ФОН ===
+        self.bg_label = QLabel(self.T["background_label"]); self.bg_label.setObjectName("muted")
+        sl.addWidget(self.bg_label)
+
+        self.bg_combo = QComboBox()
+        self._rebuild_bg_combo()
+        self.bg_combo.currentIndexChanged.connect(self._on_bg_combo_changed)
+        sl.addWidget(self.bg_combo)
+
+        # строка со скоростью
+        speed_row = QHBoxLayout()
+        speed_row.setSpacing(8)
+        self.bg_speed_label = QLabel(self.T["background_speed"]); self.bg_speed_label.setObjectName("muted")
+        speed_row.addWidget(self.bg_speed_label)
+        self.bg_speed_slider = QSlider(Qt.Horizontal)
+        self.bg_speed_slider.setMinimum(5)
+        self.bg_speed_slider.setMaximum(60)
+        self.bg_speed_slider.setValue(int(self.bg_speed))
+        self.bg_speed_slider.valueChanged.connect(self._on_speed_change)
+        speed_row.addWidget(self.bg_speed_slider, 1)
+        self.bg_speed_value = QLabel(f"{int(self.bg_speed)}s")
+        self.bg_speed_value.setObjectName("muted")
+        self.bg_speed_value.setFixedWidth(36)
+        speed_row.addWidget(self.bg_speed_value)
+        sl.addLayout(speed_row)
+
+        # чекбоксы
+        self.bg_particles_cb = QCheckBox(self.T["background_particles"])
+        self.bg_particles_cb.setChecked(self.bg_particles)
+        self.bg_particles_cb.stateChanged.connect(self._toggle_particles)
+        sl.addWidget(self.bg_particles_cb)
+
+        self.bg_animate_cb = QCheckBox(self.T["background_animate"])
+        self.bg_animate_cb.setChecked(self.bg_animate)
+        self.bg_animate_cb.stateChanged.connect(self._toggle_animation)
+        sl.addWidget(self.bg_animate_cb)
+
+        self.bg_translucent_cb = QCheckBox(self.T["background_translucent"])
+        self.bg_translucent_cb.setChecked(self.bg_translucent)
+        self.bg_translucent_cb.stateChanged.connect(self._toggle_translucent)
+        sl.addWidget(self.bg_translucent_cb)
+
+        self.bg_status_label = QLabel("")
+        self.bg_status_label.setObjectName("muted")
+        sl.addWidget(self.bg_status_label)
+        if self.bg_id and self.bg_id in BACKGROUNDS:
+            self.bg_status_label.setText(BACKGROUNDS[self.bg_id]["name"])
+        else:
+            self.bg_status_label.setText(self.T["background_none"])
+
+        sl.addWidget(self._sep())
+
+        # === МОДЕЛЬ ===
         self.model_label = QLabel(self.T["model"]); self.model_label.setObjectName("muted")
         sl.addWidget(self.model_label)
         self.model_combo = QComboBox()
@@ -1494,6 +1967,7 @@ class NeoBrainChat(QMainWindow):
         sl.addWidget(self.stream_checkbox)
         sl.addWidget(self._sep())
 
+        # === ПЕРСОНАЖ ===
         self.char_label = QLabel(self.T["character"]); self.char_label.setObjectName("muted")
         sl.addWidget(self.char_label)
         self.char_btn = QPushButton(self.T["create_character"])
@@ -1524,14 +1998,12 @@ class NeoBrainChat(QMainWindow):
         char_row.addWidget(self.char_del_btn)
         sl.addLayout(char_row)
 
-        # Кнопка «✏ Редактировать персонажа» — НАД «Изменить аватар»
         self.edit_char_btn = QPushButton(self.T["edit_character"])
         self.edit_char_btn.setObjectName("refresh_btn")
         self.edit_char_btn.setMinimumHeight(34)
         self.edit_char_btn.clicked.connect(self.edit_current_character)
         sl.addWidget(self.edit_char_btn)
 
-        # Кнопка «✏ Изменить аватар»
         self.edit_avatar_btn = QPushButton(self.T["edit_avatar"])
         self.edit_avatar_btn.setObjectName("refresh_btn")
         self.edit_avatar_btn.setMinimumHeight(34)
@@ -1658,6 +2130,10 @@ class NeoBrainChat(QMainWindow):
         self.typing_label = QLabel("")
         sb.addPermanentWidget(self.typing_label)
 
+    def _on_bg_combo_changed(self, index):
+        bg_id = self.bg_combo.itemData(index)
+        self._apply_background(bg_id)
+
     # ============================================================
     # SIDEBAR
     # ============================================================
@@ -1687,6 +2163,9 @@ class NeoBrainChat(QMainWindow):
             self.sidebar_trigger_btn.move(0, self.height() // 2 - 26)
         if self._overlay is not None:
             self._overlay.resize(self.size())
+        if hasattr(self, "background") and self.background is not None:
+            self.background.setGeometry(self.rect())
+            self.background.lower()
 
     def toggle_stream_mode(self):
         self.settings["stream_mode"] = self.stream_checkbox.isChecked()
@@ -1803,8 +2282,6 @@ class NeoBrainChat(QMainWindow):
         t = QLabel(title_text); t.setObjectName("title")
         layout.addWidget(t)
 
-        # ===== АВАТАР =====
-        # При редактировании — подтягиваем существующий
         existing_path = get_avatar_path(char_old_name) if is_edit and char_old_name else None
         existing_pixmap = None
         if existing_path:
@@ -1967,7 +2444,6 @@ class NeoBrainChat(QMainWindow):
         gl.addStretch()
         layout.addLayout(gl)
 
-        # Устанавливаем текущий пол
         if is_edit:
             if character_to_edit.get("gender") == "женский":
                 female.setChecked(True)
@@ -2031,7 +2507,6 @@ class NeoBrainChat(QMainWindow):
             QMessageBox.warning(self, self.T["character_error"], self.T["character_error_name"])
             return
 
-        # Проверка занятости имени (только если меняется или создаём)
         chars = self.settings.get("characters", {})
         if (not is_edit and name in chars) or (is_edit and name != old_name and name in chars):
             QMessageBox.warning(
@@ -2047,7 +2522,6 @@ class NeoBrainChat(QMainWindow):
 
         prompt = self._generate_prompt(name, gender, personality, desc)
 
-        # Сохраняем старую историю, если редактируем
         old_history = []
         if is_edit and old_name and old_name in chars:
             old_history = chars[old_name].get("history", [])
@@ -2065,23 +2539,18 @@ class NeoBrainChat(QMainWindow):
             "avatar_offset_y": float(offset_y),
         }
 
-        # Обновляем аватар-файл, если был выбран новый
         if source_path and os.path.exists(source_path):
             saved = save_avatar(name, source_path)
             if saved:
                 new_char["avatar_path"] = saved
 
-        # Если редактирование со сменой имени — переименовываем папку аватара
         if is_edit and old_name and old_name != name:
             rename_avatar_folder(old_name, name)
-            # Обновляем avatar_path
             new_path = get_avatar_path(name)
             if new_path:
                 new_char["avatar_path"] = new_path
 
-        # Сохраняем
         if is_edit and old_name and old_name != name:
-            # Удаляем старую запись
             if old_name in chars:
                 del chars[old_name]
 
@@ -2102,7 +2571,6 @@ class NeoBrainChat(QMainWindow):
             msg = self.T["character_created"].format(name=name, gender=gender)
         self.add_system_message("✦ NeoBrain", msg)
 
-        # Обновляем комбобокс
         self._rebuild_char_combo(select_name=name)
 
         self._reload_chat()
@@ -2237,4 +2705,4 @@ if __name__ == "__main__":
     app.setStyle("Fusion")
     window = NeoBrainChat()
     window.show()
-    sys.exit(app.exec_())    
+    sys.exit(app.exec_())
