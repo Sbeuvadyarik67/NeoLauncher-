@@ -81,3 +81,8 @@ projects/NeoBrain/avatars/*
 
 # Бэкапы NeoBrain
 projects/neobrain_backup_*.py
+
+# ============================================================
+# WHYDOES — СЦЕНЫ ПОЛЬЗОВАТЕЛЯ
+# ============================================================
+projects/whydoes_scenes.json

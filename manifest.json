@@ -50,7 +50,7 @@
     },
     "whydoes": {
       "name": "🌀 Why Does This Exist?",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "path": "projects/whydoes.py",
       "icon": "🌀",
       "color": "#f59e0b",

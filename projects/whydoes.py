@@ -1,8 +1,11 @@
 import tkinter as tk
+from tkinter import simpledialog, messagebox
 import math
 import random
 import time
 import colorsys
+import json
+import os
 
 
 class AbstractDashboard:
@@ -1332,6 +1335,33 @@ class AbstractDashboard:
             self.anti_grid_frame.grid_columnconfigure(i, weight=1)
             self._anti_buttons[mode] = btn
 
+        # === СЦЕНЫ ===
+        scene_frame = tk.Frame(self.left_panel, bg=self.panel_bg)
+        scene_frame.pack(fill=tk.X, padx=10, pady=(5, 3))
+
+        tk.Label(
+            scene_frame, text="💾 Сцены",
+            bg=self.panel_bg, fg=self.text_color,
+            font=("Consolas", 9, "bold"), anchor=tk.W
+        ).pack(fill=tk.X)
+
+        scene_btn_row = tk.Frame(scene_frame, bg=self.panel_bg)
+        scene_btn_row.pack(fill=tk.X, pady=2)
+
+        tk.Button(
+            scene_btn_row, text="💾 Сохранить",
+            bg="#21262d", fg="#2ea043", font=("Consolas", 9),
+            relief=tk.FLAT, padx=5, pady=3,
+            command=self.save_scene
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 2))
+
+        tk.Button(
+            scene_btn_row, text="📂 Загрузить",
+            bg="#21262d", fg="#58a6ff", font=("Consolas", 9),
+            relief=tk.FLAT, padx=5, pady=3,
+            command=self.load_scene
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(2, 0))
+
         tk.Button(
             self.left_panel, text="❌ Выключить всё",
             bg="#21262d", fg="#ff6b6b", font=("Consolas", 9),
@@ -1373,6 +1403,222 @@ class AbstractDashboard:
             self.tele_power = float(value)
         except (ValueError, TypeError):
             pass
+
+
+    # ------------------------------------------------------------------ #
+    #  СОХРАНЕНИЕ / ЗАГРУЗКА СЦЕН                                       #
+    # ------------------------------------------------------------------ #
+    def _get_scenes_path(self):
+        """Путь к файлу со сценами (рядом с whydoes.py)."""
+        base = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base, "whydoes_scenes.json")
+
+    def _read_scenes(self):
+        """Читает все сцены из файла. Возвращает dict."""
+        path = self._get_scenes_path()
+        if not os.path.exists(path):
+            return {}
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def _write_scenes(self, scenes):
+        """Записывает сцены в файл."""
+        path = self._get_scenes_path()
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(scenes, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception:
+            return False
+
+    def save_scene(self):
+        """Сохраняет текущее состояние в сцену."""
+        name = simpledialog.askstring(
+            "💾 Сохранить сцену",
+            "Введите имя сцены:",
+            parent=self.root
+        )
+        if not name or not name.strip():
+            return
+        name = name.strip()
+
+        scene = {
+            "points": [],
+            "lines": [],
+            "mode": self.current_special_mode,
+            "anti_mode": self.current_antistress_mode,
+            "camera": {
+                "x": self.camera_x,
+                "y": self.camera_y,
+                "zoom": self.camera_zoom,
+            }
+        }
+
+        for p in self.points:
+            scene["points"].append({
+                "id": p["id"],
+                "x": p["x"],
+                "y": p["y"],
+                "color": p["color"],
+                "size": p["size"],
+                "vx": p.get("vx", 0),
+                "vy": p.get("vy", 0),
+            })
+
+        for line in self.lines:
+            scene["lines"].append({
+                "p1_id": line["point1"]["id"],
+                "p2_id": line["point2"]["id"],
+                "color": line["color"],
+                "width": line["width"],
+            })
+
+        scenes = self._read_scenes()
+        scenes[name] = scene
+        if self._write_scenes(scenes):
+            messagebox.showinfo("💾 Сохранено", f"Сцена «{name}» сохранена!", parent=self.root)
+        else:
+            messagebox.showerror("Ошибка", "Не удалось сохранить сцену.", parent=self.root)
+
+    def load_scene(self):
+        """Загружает сцену из файла. Открывает окно выбора."""
+        scenes = self._read_scenes()
+        if not scenes:
+            messagebox.showinfo("📂 Нет сцен", "Сохранённых сцен пока нет.", parent=self.root)
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("📂 Загрузить сцену")
+        dialog.geometry("420x420")
+        dialog.configure(bg=self.bg_color)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        tk.Label(
+            dialog, text="Выберите сцену:",
+            bg=self.bg_color, fg=self.text_color,
+            font=("Consolas", 12)
+        ).pack(pady=10)
+
+        listbox = tk.Listbox(
+            dialog,
+            bg=self.panel_bg,
+            fg=self.text_color,
+            font=("Consolas", 11),
+            selectbackground=self.accent,
+            selectforeground="#0f1115",
+            bd=0,
+            highlightthickness=0,
+        )
+        listbox.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
+
+        scene_names = list(scenes.keys())
+        for n in scene_names:
+            listbox.insert(tk.END, f"  {n}")
+
+        def do_load(event=None):
+            sel = listbox.curselection()
+            if not sel:
+                return
+            name = scene_names[sel[0]]
+            scene = scenes[name]
+            dialog.destroy()
+            self._apply_scene(scene)
+            messagebox.showinfo("📂 Загружено", f"Сцена «{name}» загружена!", parent=self.root)
+
+        def do_delete():
+            sel = listbox.curselection()
+            if not sel:
+                return
+            name = scene_names[sel[0]]
+            if messagebox.askyesno("Удалить?", f"Удалить сцену «{name}»?", parent=dialog):
+                del scenes[name]
+                self._write_scenes(scenes)
+                listbox.delete(sel[0])
+                scene_names.pop(sel[0])
+
+        btn_frame = tk.Frame(dialog, bg=self.bg_color)
+        btn_frame.pack(fill=tk.X, padx=15, pady=10)
+
+        tk.Button(
+            btn_frame, text="📂 Загрузить",
+            bg=self.accent, fg="#0f1115",
+            font=("Consolas", 10, "bold"),
+            command=do_load, bd=0, padx=10, pady=5
+        ).pack(side=tk.LEFT)
+
+        tk.Button(
+            btn_frame, text="🗑 Удалить",
+            bg="#ff6b6b", fg="#0f1115",
+            font=("Consolas", 10, "bold"),
+            command=do_delete, bd=0, padx=10, pady=5
+        ).pack(side=tk.LEFT, padx=(10, 0))
+
+        tk.Button(
+            btn_frame, text="Отмена",
+            bg=self.panel_bg, fg=self.text_color,
+            font=("Consolas", 10),
+            command=dialog.destroy, bd=0, padx=10, pady=5
+        ).pack(side=tk.RIGHT)
+
+        listbox.bind("<Double-Button-1>", do_load)
+
+    def _apply_scene(self, scene):
+        """Применяет сцену — заменяет точки, линии, камеру."""
+        # 1. Очищаем текущее
+        self.points = []
+        self.lines = []
+        self.selected_objects = []
+
+        # 2. Восстанавливаем точки
+        id_to_point = {}
+        for p_data in scene.get("points", []):
+            new_point = {
+                "id": p_data["id"],
+                "x": p_data["x"],
+                "y": p_data["y"],
+                "color": p_data["color"],
+                "size": p_data["size"],
+                "vx": p_data.get("vx", 0),
+                "vy": p_data.get("vy", 0),
+                "selected": False,
+                "pulse_offset": 0,
+            }
+            self.points.append(new_point)
+            id_to_point[p_data["id"]] = new_point
+
+        # 3. Восстанавливаем линии
+        for l_data in scene.get("lines", []):
+            p1 = id_to_point.get(l_data["p1_id"])
+            p2 = id_to_point.get(l_data["p2_id"])
+            if p1 and p2:
+                self.lines.append({
+                    "point1": p1,
+                    "point2": p2,
+                    "color": l_data["color"],
+                    "width": l_data["width"],
+                    "selected": False,
+                })
+        self.line_count = len(self.lines)
+
+        # 4. Камера
+        cam = scene.get("camera", {})
+        self.camera_x = cam.get("x", 0)
+        self.camera_y = cam.get("y", 0)
+        self.camera_zoom = cam.get("zoom", 1.0)
+        self.target_camera_x = self.camera_x
+        self.target_camera_y = self.camera_y
+        self.target_camera_zoom = self.camera_zoom
+
+        # 5. Режимы
+        if scene.get("mode"):
+            self.set_special_mode(scene["mode"])
+        elif scene.get("anti_mode"):
+            self.set_antistress_mode(scene["anti_mode"])
+
 
     # ------------------------------------------------------------------ #
     #  ЧАСТИЦЫ / ЗВЁЗДЫ                                                  #
