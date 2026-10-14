@@ -402,6 +402,18 @@ class NeoLauncher:
             justify=tk.CENTER
         ).pack()
 
+        # === ВЕРСИЯ ===
+        version_text = data.get("version", "")
+        if version_text:
+            tk.Label(
+                inner,
+                text=f"v{version_text}",
+                font=("Segoe UI", 9),
+                bg=c["card_top"],
+                fg=c["dim"],
+                justify=tk.CENTER
+            ).pack(pady=(2, 4))
+
         if desc:
             tk.Label(
                 inner,
