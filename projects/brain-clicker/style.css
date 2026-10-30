@@ -145,7 +145,7 @@ h1 {
     left: 50%;
     transform: translateX(-50%);
     width: 100%;
-    height: 100%;
+    height: 0%;
     pointer-events: none;
     z-index: 100;
     overflow: visible;
@@ -537,5 +537,148 @@ h1 {
 
     .offline-banner-earned {
         font-size: 18px;
+    }
+}
+
+/* --- ПЕРЕТАСКИВАЕМОЕ ОКНО МАГАЗИНА --- */
+#shop-window {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 320px;
+    background: rgba(15, 15, 25, 0.95);
+    /* Темный фон */
+    border: 1px solid #ff3e9d;
+    /* Твоя неоновая рамка */
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(255, 62, 157, 0.3);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    /* Запрещаем выделять текст */
+    transition: opacity 0.2s ease;
+}
+
+/* Скрываем окно, пока не нажали кнопку (если нужно) */
+#shop-window.hidden {
+    display: none;
+}
+
+/* Шапка окна (за неё таскаем) */
+.shop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: rgba(255, 62, 157, 0.1);
+    border-bottom: 1px solid rgba(255, 62, 157, 0.3);
+    border-radius: 12px 12px 0 0;
+    cursor: grab;
+    position: relative;
+    z-index: 10000;
+}
+
+.shop-header:active {
+    cursor: grabbing;
+}
+
+.shop-close {
+    background: none;
+    border: none;
+    color: #ff3e9d;
+    font-size: 18px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.shop-close:hover {
+    color: #fff;
+    transform: scale(1.2);
+}
+
+/* --- ЭФФЕКТ ЖЕЛЕЙКИ --- */
+.jelly-bounce-x {
+    animation: jellyX 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.jelly-bounce-y {
+    animation: jellyY 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes jellyX {
+    0% {
+        transform: scaleX(1);
+    }
+
+    20% {
+        transform: scaleX(0.75);
+    }
+
+    /* Сильнее сплющивает */
+    50% {
+        transform: scaleX(1.15);
+    }
+
+    /* Сильнее растягивает */
+    75% {
+        transform: scaleX(0.95);
+    }
+
+    /* Небольшое дрожание */
+    100% {
+        transform: scaleX(1);
+    }
+}
+
+@keyframes jellyY {
+    0% {
+        transform: scaleY(1);
+    }
+
+    20% {
+        transform: scaleY(0.75);
+    }
+
+    /* Сильнее сплющивает */
+    50% {
+        transform: scaleY(1.15);
+    }
+
+    /* Сильнее растягивает */
+    75% {
+        transform: scaleY(0.95);
+    }
+
+    100% {
+        transform: scaleY(1);
+    }
+}
+
+/* --- ВСПЛЫВАЮЩИЕ ТЕКСТЫ ДЛЯ МАГАЗИНА (ОЙ, АЙ) --- */
+.floating-text {
+    position: fixed;
+    color: #ff3e9d;
+    font-size: 24px;
+    /* Чуть увеличил, чтобы было видно */
+    font-weight: bold;
+    pointer-events: none;
+    /* ВОТ ТУТ ИЗМЕНЕНИЕ: новое имя анимации */
+    animation: shopFloatUp 1s ease-out forwards;
+    text-shadow: 0 0 10px rgba(255, 62, 157, 0.8);
+    z-index: 1000;
+}
+
+/* ВОТ ТУТ ИЗМЕНЕНИЕ: переименовали @keyframes */
+@keyframes shopFloatUp {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-50px) scale(1.2);
     }
 }

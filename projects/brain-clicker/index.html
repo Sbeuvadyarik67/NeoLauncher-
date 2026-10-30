@@ -41,10 +41,16 @@
 
         <!-- Магазин -->
         <div class="shop-wrapper">
-            <div id="teaser-container" class="teaser-container"></div>
-            <div class="shop" id="shop">
-                <div class="shop-content">
+            <!-- Само окно магазина (добавили id="shop-window" для перетаскивания) -->
+            <div class="shop" id="shop-window">
+                <!-- Новая шапка, за которую будем тащить -->
+                <div class="shop-header" id="shop-header">
                     <div class="shop-title">🛒 <span id="shop-label">Магазин</span></div>
+                    <button id="shop-close" class="shop-close">✖</button>
+                </div>
+
+                <div class="shop-content" id="shop-content">
+                    <!-- Пока оставляем заглушку, потом сюда добавим кнопки покупок -->
                     <div class="shop-locked">
                         <div class="shop-soon">Coming soon...</div>
                         <div class="shop-hint" id="shop-hint">Магазин откроется позже</div>

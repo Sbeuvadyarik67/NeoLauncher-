@@ -537,7 +537,6 @@ function resetProgress() {
 
 // === Привязка событий ===
 document.getElementById('brain').addEventListener('click', clickBrain);
-document.getElementById('shop').addEventListener('click', showTeaser);
 document.getElementById('reset').addEventListener('click', resetProgress);
 document.getElementById('lang-ru').addEventListener('click', () => applyLanguage('ru'));
 document.getElementById('lang-en').addEventListener('click', () => applyLanguage('en'));
@@ -562,3 +561,198 @@ setInterval(() => {
 // === Запуск ===
 loadGame();
 
+// ==========================================
+// ЛОГИКА ПЕРЕТАСКИВАНИЯ МАГАЗИНА
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const shopWindow = document.getElementById('shop-window');
+    const shopHeader = document.getElementById('shop-header');
+    const shopClose = document.getElementById('shop-close');
+
+    if (!shopWindow || !shopHeader) return;
+
+    let isDragging = false;
+    let startX, startY, startLeft, startTop;
+    let lastHitX = false, lastHitY = false;
+
+    // --- ФИЗИКА ---
+    let velocityX = 0;
+    let velocityY = 0;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let animationFrameId = null;
+    // --- НАСТРОЙКИ ФИЗИКИ (крути под себя!) ---
+    const friction = 0.985;      // Трение: ближе к 1 = скользит дольше (0.985 — как лед)
+    const bounceForce = 0.8;     // Отскок: 0.8 = отлетает почти с той же силой
+    const speedMultiplier = 1.5; // Множитель скорости (чтобы кидать "с размахом")
+
+    // Функция для желейки и текста
+    function triggerJelly(axis, x, y) {
+        const animClass = axis === 'x' ? 'jelly-bounce-x' : 'jelly-bounce-y';
+        shopWindow.classList.remove('jelly-bounce-x', 'jelly-bounce-y');
+        void shopWindow.offsetWidth;
+        shopWindow.classList.add(animClass);
+
+        const texts = state.lang === 'en' ? ["Ouch!", "Hey!", "Oops!", "Not so fast!", "Wall!"] : ["Ай!", "Ой!", "Упс!", "Не так быстро!", "Стена!"];
+        const textEl = document.createElement('div');
+        textEl.className = 'floating-text';
+        textEl.textContent = texts[Math.floor(Math.random() * texts.length)];
+
+        if (axis === 'x') {
+            textEl.style.left = `${x + (x < window.innerWidth / 2 ? 60 : -60)}px`;
+            textEl.style.top = `${y + 40}px`;
+        } else {
+            textEl.style.left = `${x + 60}px`;
+            textEl.style.top = `${y + (y < window.innerHeight / 2 ? 60 : -60)}px`;
+        }
+        document.body.appendChild(textEl);
+        setTimeout(() => textEl.remove(), 1000);
+    }
+
+    // Закрытие магазина
+    if (shopClose) {
+        shopClose.addEventListener('click', () => {
+            shopWindow.style.display = 'none';
+        });
+    }
+
+    // --- Начало перетаскивания ---
+    shopHeader.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        isDragging = true;
+
+        // Останавливаем инерцию, если окно летело
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        velocityX = 0;
+        velocityY = 0;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+
+        const rect = shopWindow.getBoundingClientRect();
+        shopWindow.style.transform = 'none';
+        shopWindow.style.left = rect.left + 'px';
+        shopWindow.style.top = rect.top + 'px';
+
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = rect.left;
+        startTop = rect.top;
+
+        shopHeader.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+    });
+
+    // --- Движение мыши ---
+    document.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+
+        // Вычисляем скорость (как быстро движется мышь) + усилитель
+        velocityX = (e.clientX - lastMouseX) * speedMultiplier;
+        velocityY = (e.clientY - lastMouseY) * speedMultiplier;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+
+        let dx = e.clientX - startX;
+        let dy = e.clientY - startY;
+
+        let newLeft = startLeft + dx;
+        let newTop = startTop + dy;
+
+        const windowWidth = shopWindow.offsetWidth;
+        const windowHeight = shopWindow.offsetHeight;
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+
+        // Проверка границ (со стуком)
+        if (newLeft < 0) {
+            newLeft = 0;
+            if (!lastHitX) triggerJelly('x', 0, newTop);
+            lastHitX = true;
+            velocityX = 0; // Гасим скорость при ударе
+        } else if (newLeft + windowWidth > screenWidth) {
+            newLeft = screenWidth - windowWidth;
+            if (!lastHitX) triggerJelly('x', newLeft, newTop);
+            lastHitX = true;
+            velocityX = 0;
+        } else { lastHitX = false; }
+
+        if (newTop < 0) {
+            newTop = 0;
+            if (!lastHitY) triggerJelly('y', newLeft, 0);
+            lastHitY = true;
+            velocityY = 0;
+        } else if (newTop + windowHeight > screenHeight) {
+            newTop = screenHeight - windowHeight;
+            if (!lastHitY) triggerJelly('y', newLeft, newTop);
+            lastHitY = true;
+            velocityY = 0;
+        } else { lastHitY = false; }
+
+        shopWindow.style.left = `${newLeft}px`;
+        shopWindow.style.top = `${newTop}px`;
+    });
+
+    // --- Отпускание мыши (запуск инерции) ---
+    document.addEventListener('pointerup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        shopHeader.style.cursor = 'grab';
+        document.body.style.userSelect = '';
+
+        // Если скорость слишком маленькая — не летим
+        if (Math.abs(velocityX) > 2 || Math.abs(velocityY) > 2) {
+            animateInertia();
+        }
+    });
+
+    // --- Анимация скольжения (как на льду) ---
+    function animateInertia() {
+        const windowWidth = shopWindow.offsetWidth;
+        const windowHeight = shopWindow.offsetHeight;
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+
+        let currentLeft = parseFloat(shopWindow.style.left) || 0;
+        let currentTop = parseFloat(shopWindow.style.top) || 0;
+
+        // Применяем скорость
+        currentLeft += velocityX;
+        currentTop += velocityY;
+
+        // Трение (постепенно замедляем)
+        velocityX *= friction;
+        velocityY *= friction;
+
+        // Проверка стен с отскоком
+        if (currentLeft < 0) {
+            currentLeft = 0;
+            velocityX *= -bounceForce; // Отскок
+            triggerJelly('x', 0, currentTop);
+        } else if (currentLeft + windowWidth > screenWidth) {
+            currentLeft = screenWidth - windowWidth;
+            velocityX *= -bounceForce;
+            triggerJelly('x', currentLeft, currentTop);
+        }
+
+        if (currentTop < 0) {
+            currentTop = 0;
+            velocityY *= -bounceForce;
+            triggerJelly('y', currentLeft, 0);
+        } else if (currentTop + windowHeight > screenHeight) {
+            currentTop = screenHeight - windowHeight;
+            velocityY *= -bounceForce;
+            triggerJelly('y', currentLeft, currentTop);
+        }
+
+        shopWindow.style.left = `${currentLeft}px`;
+        shopWindow.style.top = `${currentTop}px`;
+
+        // Если скорость ещё есть — продолжаем анимацию (уменьшили порог до 0.05)
+        if (Math.abs(velocityX) > 0.05 || Math.abs(velocityY) > 0.05) {
+            animationFrameId = requestAnimationFrame(animateInertia);
+        } else {
+            velocityX = 0;
+            velocityY = 0;
+        }
+    }
+});
