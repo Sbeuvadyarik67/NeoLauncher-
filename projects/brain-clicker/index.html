@@ -41,28 +41,53 @@
 
         <!-- Магазин -->
         <div class="shop-wrapper">
-            <!-- Само окно магазина (добавили id="shop-window" для перетаскивания) -->
+            <div id="teaser-container" class="teaser-container"></div>
+
+            <!-- Окно магазина -->
             <div class="shop" id="shop-window">
-                <!-- Новая шапка, за которую будем тащить -->
                 <div class="shop-header" id="shop-header">
                     <div class="shop-title">🛒 <span id="shop-label">Магазин</span></div>
                     <button id="shop-close" class="shop-close">✖</button>
                 </div>
-
                 <div class="shop-content" id="shop-content">
-                    <!-- Пока оставляем заглушку, потом сюда добавим кнопки покупок -->
-                    <div class="shop-locked">
-                        <div class="shop-soon">Coming soon...</div>
-                        <div class="shop-hint" id="shop-hint">Магазин откроется позже</div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Кнопка сброса -->
-        <button id="reset" class="reset-btn">
-            <span id="reset-label">Сбросить прогресс</span>
-        </button>
+                    <!-- Товар 1: Сила клика -->
+                    <div class="shop-item">
+                        <div class="shop-item-info">
+                            <span class="shop-item-name">⚡ Сила клика</span>
+                            <span class="shop-item-level" id="click-level">Ур. 1</span>
+                        </div>
+                        <button id="buy-click" class="buy-btn">Купить (10 🧠)</button>
+                    </div>
+
+                    <!-- Товар 2: Нейро-сеть -->
+                    <div class="shop-item">
+                        <div class="shop-item-info">
+                            <span class="shop-item-name">🕸️ Нейро-сеть</span>
+                            <span class="shop-item-level" id="passive-level">Ур. 0 (0/час)</span>
+                        </div>
+                        <button id="buy-passive" class="buy-btn">Купить (100 🧠)</button>
+                    </div>
+
+                    <!-- Товар 3: Имплант -->
+                    <div class="shop-item">
+                        <div class="shop-item-info">
+                            <span class="shop-item-name">🧬 Нейро-имплант</span>
+                            <span class="shop-item-level" id="implant-level">Ур. 0 (+0%)</span>
+                        </div>
+                        <button id="buy-implant" class="buy-btn">Купить (500 🧠)</button>
+                    </div>
+
+                </div> <!-- Закрываем shop-content -->
+            </div> <!-- Закрываем shop -->
+        </div> <!-- Закрываем shop-wrapper -->
+
+        <!-- Кнопки -->
+        <div style="margin-top: 20px;">
+            <button id="open-shop-btn" class="reset-btn"
+                style="margin-right: 10px; border-color: #ff2d8a; color: #ff2d8a;">🛒 Открыть магазин</button>
+            <button id="reset" class="reset-btn"><span id="reset-label">Сбросить прогресс</span></button>
+        </div>
     </div>
 
     <!-- Слой для тени -->
