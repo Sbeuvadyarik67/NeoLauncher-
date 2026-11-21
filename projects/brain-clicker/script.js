@@ -7,11 +7,25 @@ let state = {
     clickLevel: 1,
     passiveLevel: 0,
     implantLevel: 0,
+    permanentClickBonus: 0,   // перманентные бонусы от дропов (не затираются апгрейдами)
+    activeBoost: null,        // { until, multiplier } от временных бустов
+    unlockedCosmetics: [],    // купленные визуальные улучшения
     lang: 'ru',
     lastSeen: Date.now(),
     shadowSightings: 0,
     shadowDrops: 0,
     shadowFiguresSeen: {}
+};
+
+let brainHeat = 0; // Локальная переменная для визуала нагрева (не сохраняется)
+
+// === БАЛАНС: тонкая грань прогресса ===
+const BALANCE = {
+    CLICK_BASE: 15, CLICK_GROWTH: 1.15,           // цена клика: ×1.15 за уровень
+    PASSIVE_BASE: 100, PASSIVE_GROWTH: 1.13, PASSIVE_INCOME: 2, // доход пассива за уровень
+    IMPLANT_BASE: 1000, IMPLANT_GROWTH: 1.75, IMPLANT_BONUS: 0.08, // +8% за уровень (мягкий множитель)
+    OFFLINE_RATE: 0.5, OFFLINE_CAP_SEC: 7200,     // оффлайн: 50% скорости, кап 2 часа
+    DROP_SEC_MULT: 15, DROP_CLICK_MULT: 8         // дропы: ~15 сек дохода вместо 60
 };
 
 // === Языки ===
@@ -21,14 +35,20 @@ const translations = {
         shopLabel: 'Магазин', shopHint: 'Магазин откроется позже', resetLabel: 'Сбросить прогресс',
         resetConfirm: 'Точно сбросить весь прогресс?', resetDone: 'Прогресс сброшен',
         offlineHint: 'Если уйдёте — я поработаю за вас! 🧠',
-        offlineNotif: 'Привет! Тебя не было {time}. Я поработал вместо тебя!', offlineEarned: '+{brains} 🧠'
+        offlineNotif: 'Привет! Тебя не было {time}. Я поработал вместо тебя!', offlineEarned: '+{brains} 🧠',
+        clickPower: 'Сила клика', neuralNetwork: 'Нейро-сеть', neuroImplant: 'Нейро-имплант',
+        buy: 'Купить', max: 'Максимум', interface: '🎨 Интерфейс',
+        colorfulClicks: 'Цветные Частицы', neonBrain: 'Неоновый Мозг', neuralBg: 'Нейронный Фон', goldStatus: 'Золотой Статус'
     },
     en: {
         scoreLabel: 'brains', clicksLabel: 'Clicks:', psecLabel: 'Brains/sec:',
         shopLabel: 'Shop', shopHint: 'Shop will open later', resetLabel: 'Reset progress',
         resetConfirm: 'Really reset all progress?', resetDone: 'Progress reset',
         offlineHint: "If you leave — I'll work for you! 🧠",
-        offlineNotif: "Hey! You were away {time}. I worked for you!", offlineEarned: '+{brains} 🧠'
+        offlineNotif: "Hey! You were away {time}. I worked for you!", offlineEarned: '+{brains} 🧠',
+        clickPower: 'Click Power', neuralNetwork: 'Neural Network', neuroImplant: 'Neuro Implant',
+        buy: 'Buy', max: 'Max', interface: '🎨 Interface',
+        colorfulClicks: 'Colorful Clicks', neonBrain: 'Neon Brain', neuralBg: 'Neural Background', goldStatus: 'Gold Status'
     }
 };
 
@@ -54,12 +74,46 @@ const shadowPositions = [
 
 let lastPhraseIndex = -1, lastShadowPosition = null, recentShadowPositions = [], recentShadowFigures = [], lastShadowSpawn = Date.now(), currentShadow = null;
 
-// === Функция пересчета статов (Синергия) ===
-function recalculateStats() {
-    const mult = 1 + (state.implantLevel * 0.1);
-    state.brainsPerClick = Math.floor((1 + state.clickLevel) * mult);
-    state.brainsPerSec = (state.brainsPerClick * 0.5) * state.passiveLevel * mult;
+// === БАЗА ДАННЫХ КОСМЕТИКИ (чистый визуал, 0% влияния на баланс) ===
+const COSMETICS_DB = [
+    { id: 'colorful_clicks', name: 'Цветные Частицы', desc: 'Вылетающие цифры становятся неоновыми.', price: 15000, class: 'cosmetic-colorful-clicks' },
+    { id: 'neon_brain', name: 'Неоновый Мозг', desc: 'Мозг светится и нагревается от быстрых кликов.', price: 25000, class: 'cosmetic-neon-brain' },
+    { id: 'neural_bg', name: 'Нейронный Фон', desc: 'Медленная анимированная сетка на фоне.', price: 50000, class: 'cosmetic-neural-bg' },
+    { id: 'gold_status', name: 'Золотой Статус', desc: 'Цифры переливаются золотом. Чистый престиж.', price: 100000, class: 'cosmetic-gold-status' }
+];
+
+// === Применение косметики ===
+function applyCosmetics() {
+    const allClasses = COSMETICS_DB.map(c => c.class);
+    document.body.classList.remove(...allClasses);
+
+    const list = state.unlockedCosmetics || [];
+    list.forEach(id => {
+        const item = COSMETICS_DB.find(c => c.id === id);
+        if (item) document.body.classList.add(item.class);
+    });
+
+    // Если неон снят — сбрасываем inline-фильтр, чтобы не залипало
+    const brain = document.getElementById('brain');
+    if (brain && !list.includes('neon_brain')) {
+        brain.style.filter = '';
+        brainHeat = 0;
+    }
 }
+
+// === Функция пересчета статов (БЕЗ синергии) ===
+function recalculateStats() {
+    let mult = 1 + (state.implantLevel * BALANCE.IMPLANT_BONUS);
+    if (state.activeBoost && Date.now() < state.activeBoost.until) mult *= state.activeBoost.multiplier;
+
+    // Клик зависит от уровня, перманентного бонуса и импланта
+    state.brainsPerClick = Math.floor((1 + state.clickLevel + (state.permanentClickBonus || 0)) * mult);
+    // Пассив НЕ зависит от силы клика — два независимых пути прогресса
+    state.brainsPerSec = state.passiveLevel * BALANCE.PASSIVE_INCOME * mult;
+}
+
+// Глобальная заглушка — настоящая функция перепишется внутри DOMContentLoaded
+let updateShopUI = () => { };
 
 // === Функции (Загрузка, Сохранение, UI) ===
 function loadGame() {
@@ -69,16 +123,19 @@ function loadGame() {
             const parsed = JSON.parse(saved);
             state = { ...state, ...parsed };
             if (!state.shadowFiguresSeen) state.shadowFiguresSeen = {};
+            if (state.permanentClickBonus === undefined) state.permanentClickBonus = 0;
+            if (!Array.isArray(state.unlockedCosmetics)) state.unlockedCosmetics = [];
         } catch (e) { console.error('Ошибка загрузки:', e); }
     }
     recalculateStats();
+    applyCosmetics();
 
     let offlineEarned = 0, offlineSecCapped = 0;
     if (state.lastSeen && state.brainsPerSec > 0) {
         const now = Date.now();
         const offlineSec = Math.floor((now - state.lastSeen) / 1000);
-        const cappedSec = Math.min(offlineSec, 18000);
-        const earned = Math.floor(state.brainsPerSec * cappedSec * 1.1);
+        const cappedSec = Math.min(offlineSec, BALANCE.OFFLINE_CAP_SEC);
+        const earned = Math.floor(state.brainsPerSec * cappedSec * BALANCE.OFFLINE_RATE);
         if (earned > 0 && cappedSec > 30) { state.brains += earned; offlineEarned = earned; offlineSecCapped = cappedSec; }
     }
     applyLanguage(state.lang);
@@ -108,10 +165,16 @@ function clickBrain(e) {
     state.brains += state.brainsPerClick;
     state.totalClicks += 1;
     updateUI(); saveGame();
+
     const scoreEl = document.getElementById('score');
     scoreEl.classList.add('bump');
     setTimeout(() => scoreEl.classList.remove('bump'), 100);
     spawnFloatingNumber(e, '+' + state.brainsPerClick);
+
+    // === НАГРЕВ НЕОНОВОГО МОЗГА ===
+    if (state.unlockedCosmetics && state.unlockedCosmetics.includes('neon_brain')) {
+        brainHeat = Math.min(100, brainHeat + 12); // +12 единиц тепла за клик (макс. 100)
+    }
 }
 
 function spawnFloatingNumber(e, text) {
@@ -119,6 +182,15 @@ function spawnFloatingNumber(e, text) {
     const rect = container.getBoundingClientRect();
     const el = document.createElement('div');
     el.className = 'floating-number'; el.textContent = text;
+
+    // Косметика: разноцветные вылетающие цифры
+    if (state.unlockedCosmetics && state.unlockedCosmetics.includes('colorful_clicks')) {
+        const colors = ['#ff00ff', '#00ffff', '#39ff14', '#ffff00', '#ff3366', '#ff8c00'];
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        el.style.color = c;
+        el.style.textShadow = `0 0 8px ${c}`;
+    }
+
     let x = e && e.clientX ? e.clientX - rect.left : rect.width / 2;
     let y = e && e.clientY ? e.clientY - rect.top : rect.height / 2;
     x += (Math.random() - 0.5) * 40;
@@ -189,7 +261,8 @@ function rollShadowDrop(figure) {
     if (figure.surpriseDrop && Math.random() < figure.surpriseDrop.chance) return { ...figure.surpriseDrop };
     const drop = { ...figure.drops[Math.floor(Math.random() * figure.drops.length)] };
     if (drop.type === 'brains') {
-        const base = Math.max(50, state.brainsPerSec * 60 + state.brainsPerClick * 30);
+        // Ослабленные дропы: ~15 сек дохода вместо 60
+        const base = Math.max(50, state.brainsPerSec * BALANCE.DROP_SEC_MULT + state.brainsPerClick * BALANCE.DROP_CLICK_MULT);
         drop.brains = Math.floor(base * (drop.minMult + Math.random() * (drop.maxMult - drop.minMult)));
     }
     return drop;
@@ -204,10 +277,24 @@ function showDropAnimation(fig, drop) {
 
 function applyDrop(drop, figure) {
     let message = '';
-    if (drop.type === 'brains' && drop.brains) { state.brains += drop.brains; message = `${drop.emoji} +${formatNumber(drop.brains)} 🧠`; }
-    else if (drop.type === 'boost') { if (drop.flatBrains) state.brains += drop.flatBrains; message = `${drop.emoji} x${drop.multiplier} на ${drop.duration / 1000} сек!`; }
-    else if (drop.type === 'permanent') { state.brainsPerClick += drop.bonus; message = `${drop.emoji} +${drop.bonus} к клику навсегда!`; }
-    else if (drop.type === 'legendary') { state.brainsPerClick += drop.bonus; message = `${drop.emoji} ЛЕГЕНДАРКА! +${drop.bonus} к клику навсегда!`; }
+    if (drop.type === 'brains' && drop.brains) {
+        state.brains += drop.brains;
+        message = `${drop.emoji} +${formatNumber(drop.brains)} 🧠`;
+    }
+    else if (drop.type === 'boost') {
+        if (drop.flatBrains) state.brains += drop.flatBrains;
+        state.activeBoost = { until: Date.now() + drop.duration, multiplier: drop.multiplier };
+        recalculateStats();
+        message = `${drop.emoji} x${drop.multiplier} на ${drop.duration / 1000} сек!`;
+    }
+    else if (drop.type === 'permanent' || drop.type === 'legendary') {
+        // Перманентный бонус хранится отдельно и НЕ затирается апгрейдами
+        state.permanentClickBonus = (state.permanentClickBonus || 0) + drop.bonus;
+        recalculateStats();
+        message = drop.type === 'legendary'
+            ? `${drop.emoji} ЛЕГЕНДАРКА! +${drop.bonus} к клику навсегда!`
+            : `${drop.emoji} +${drop.bonus} к клику навсегда!`;
+    }
     updateUI(); showToast(message);
 }
 
@@ -228,7 +315,10 @@ function showOfflineNotification(seconds, brains) {
 }
 
 function applyLanguage(lang) {
-    state.lang = lang; const t = translations[lang];
+    state.lang = lang;
+    const t = translations[lang];
+
+    // Основные элементы
     document.getElementById('score-label').textContent = t.scoreLabel;
     document.getElementById('clicks-label').textContent = t.clicksLabel;
     document.getElementById('psec-label').textContent = t.psecLabel;
@@ -236,22 +326,118 @@ function applyLanguage(lang) {
     if (document.getElementById('shop-hint')) document.getElementById('shop-hint').textContent = t.shopHint;
     document.getElementById('reset-label').textContent = t.resetLabel;
     document.getElementById('offline-hint-label').textContent = t.offlineHint;
+
+    // Кнопки языка
     document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById('lang-' + lang).classList.add('active');
+
+    // Перевод магазина (если открыт)
+    const clickLabel = document.querySelector('.upgrade-label[for="buy-click"]');
+    const passiveLabel = document.querySelector('.upgrade-label[for="buy-passive"]');
+    const implantLabel = document.querySelector('.upgrade-label[for="buy-implant"]');
+
+    if (clickLabel) clickLabel.textContent = lang === 'ru' ? 'Сила клика' : 'Click Power';
+    if (passiveLabel) passiveLabel.textContent = lang === 'ru' ? 'Нейро-сеть' : 'Neural Network';
+    if (implantLabel) implantLabel.textContent = lang === 'ru' ? 'Нейро-имплант' : 'Neuro Implant';
+
+    // Перевод заголовка косметики
+    const cosmeticsTitle = document.querySelector('.shop-category-title');
+    if (cosmeticsTitle) cosmeticsTitle.textContent = lang === 'ru' ? '🎨 Интерфейс' : '🎨 Interface';
+
     saveGame();
+    if (typeof updateShopUI === 'function') updateShopUI();
 }
 
+// === ДВОЙНОЕ ПОДТВЕРЖДЕНИЕ СБРОСА ===
 function resetProgress() {
-    const t = translations[state.lang];
-    if (!confirm(t.resetConfirm)) return;
-    state.brains = 10; state.totalClicks = 0; state.brainsPerClick = 1; state.brainsPerSec = 0;
-    state.clickLevel = 1; state.passiveLevel = 0; state.implantLevel = 0;
-    state.shadowSightings = 0; state.shadowDrops = 0; state.shadowFiguresSeen = {};
-    recalculateStats();
-    saveGame(); updateUI(); alert(t.resetDone);
+    const existingModal = document.getElementById('reset-modal');
+    if (existingModal) existingModal.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'reset-modal';
+    modal.className = 'modal-overlay';
+
+    // ШАГ 1
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>⚠️ Сбросить прогресс?</h3>
+            <p>Весь накопленный опыт будет потерян.</p>
+            <div class="modal-buttons">
+                <button id="reset-no-1" class="btn-no">Нет</button>
+                <button id="reset-yes-1" class="btn-yes">Да</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('reset-no-1').onclick = () => modal.remove();
+    document.getElementById('reset-yes-1').onclick = () => showResetStep2(modal);
 }
 
-// Привязка старых событий
+function showResetStep2(modal) {
+    // ШАГ 2
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>🚨 Вы уверены?</h3>
+            <p>Процесс необратим. Вы потеряете всё ради нового баланса.</p>
+            <div class="modal-buttons">
+                <button id="reset-no-2" class="btn-no">Нет, отмена</button>
+                <button id="reset-yes-2" class="btn-yes" disabled>Да (5.5)</button>
+            </div>
+        </div>
+    `;
+
+    let timeLeft = 5.5;
+    const yesBtn = document.getElementById('reset-yes-2');
+    const noBtn = document.getElementById('reset-no-2');
+
+    noBtn.onclick = () => modal.remove();
+
+    const timer = setInterval(() => {
+        timeLeft -= 0.1;
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            yesBtn.disabled = false;
+            yesBtn.textContent = 'Да, сбросить';
+            yesBtn.classList.add('ready');
+        } else {
+            yesBtn.textContent = `Да (${timeLeft.toFixed(1)})`;
+        }
+    }, 100);
+
+    yesBtn.onclick = () => {
+        clearInterval(timer);
+        modal.remove();
+        performActualReset();
+    };
+}
+
+function performActualReset() {
+    state.brains = 10;
+    state.totalClicks = 0;
+    state.brainsPerClick = 1;
+    state.brainsPerSec = 0;
+    state.clickLevel = 1;
+    state.passiveLevel = 0;
+    state.implantLevel = 0;
+    state.shadowSightings = 0;
+    state.shadowDrops = 0;
+    state.shadowFiguresSeen = {};
+    state.permanentClickBonus = 0;
+    state.activeBoost = null;
+    state.unlockedCosmetics = [];   // сброс косметики
+    brainHeat = 0;                  // сброс нагрева
+
+    recalculateStats();
+    applyCosmetics();               // снять все визуальные классы
+    saveGame();
+    updateUI();
+    if (typeof window.updateShopUI === 'function') window.updateShopUI();
+
+    showToast('🧠 Прогресс успешно сброшен! Начинаем заново.');
+}
+
+// Привязка событий
 document.getElementById('brain').addEventListener('click', clickBrain);
 document.getElementById('reset').addEventListener('click', resetProgress);
 document.getElementById('lang-ru').addEventListener('click', () => applyLanguage('ru'));
@@ -261,16 +447,38 @@ window.addEventListener('beforeunload', () => { state.lastSeen = Date.now(); sav
 setInterval(saveGame, 10000);
 setInterval(() => { if (Date.now() - lastShadowSpawn > 30 * 60 * 1000) { lastShadowSpawn = Date.now(); spawnShadow(); } }, 30000);
 
-// === Тик пассивного дохода ===
+// === Тик пассивного дохода + контроль истечения бустов ===
 setInterval(() => {
+    if (state.activeBoost && Date.now() >= state.activeBoost.until) {
+        state.activeBoost = null;
+        recalculateStats();
+    }
     if (state.brainsPerSec > 0) {
         state.brains += state.brainsPerSec;
         updateUI();
     }
 }, 1000);
 
+// === Анимация "остывания" и смены цвета неона ===
+function updateBrainHeatVisuals() {
+    if (state.unlockedCosmetics && state.unlockedCosmetics.includes('neon_brain')) {
+        brainHeat = Math.max(0, brainHeat - 0.8); // Скорость остывания
+
+        const brain = document.getElementById('brain');
+        if (brain) {
+            const hue = 280 - (brainHeat * 2.8); // 280 (фиолетовый) -> 0 (красный)
+            const blur = 15 + (brainHeat * 0.3); // 15px -> 45px
+            const opacity = 0.6 + (brainHeat * 0.004); // 0.6 -> 1.0
+
+            brain.style.filter = `drop-shadow(0 0 ${blur}px hsla(${hue}, 100%, 50%, ${opacity})) drop-shadow(0 0 ${blur * 1.5}px hsla(${hue}, 100%, 50%, ${opacity * 0.5}))`;
+        }
+    }
+    requestAnimationFrame(updateBrainHeatVisuals);
+}
+
 // === Запуск ===
 loadGame();
+requestAnimationFrame(updateBrainHeatVisuals);
 
 // ==========================================
 // МАГАЗИН И ПЕРЕТАСКИВАНИЕ
@@ -295,9 +503,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAX_PASSIVE_LEVEL = 50;
     const MAX_IMPLANT_LEVEL = 20;
 
-    function getClickCost(level) { return 10 + (level - 1) * 15; }
-    function getPassiveCost(level) { return 100 + (level - 1) * 150; }
-    function getImplantCost(level) { return 500 + (level * 1000); }
+    // === ЭКСПОНЕНЦИАЛЬНЫЕ ЦЕНЫ ===
+    function getClickCost(level) { return Math.ceil(BALANCE.CLICK_BASE * Math.pow(BALANCE.CLICK_GROWTH, level - 1)); }
+    function getPassiveCost(level) { return Math.ceil(BALANCE.PASSIVE_BASE * Math.pow(BALANCE.PASSIVE_GROWTH, level)); }
+    function getImplantCost(level) { return Math.ceil(BALANCE.IMPLANT_BASE * Math.pow(BALANCE.IMPLANT_GROWTH, level)); }
 
     function updateShopUI() {
         // Клик
@@ -313,10 +522,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 buyClickBtn.disabled = state.brains < cost;
             }
         }
-        // Пассив (Нейро-сеть)
+        // Пассив (Нейро-сеть) — доход НЕ зависит от клика
         if (passiveLevelEl && buyPassiveBtn) {
             const cost = getPassiveCost(state.passiveLevel);
-            const perSec = (state.brainsPerClick * 0.5) * state.passiveLevel * (1 + state.implantLevel * 0.1);
+            const perSec = state.brainsPerSec;
             const perHour = Math.floor(perSec * 3600);
 
             if (state.passiveLevel >= MAX_PASSIVE_LEVEL) {
@@ -329,10 +538,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 buyPassiveBtn.disabled = state.brains < cost;
             }
         }
-        // Имплант
+        // Имплант — мягкий глобальный множитель (+8% за уровень)
         if (implantLevelEl && buyImplantBtn) {
             const cost = getImplantCost(state.implantLevel);
-            const bonusPercent = state.implantLevel * 10;
+            const bonusPercent = Math.round(state.implantLevel * BALANCE.IMPLANT_BONUS * 100);
 
             if (state.implantLevel >= MAX_IMPLANT_LEVEL) {
                 implantLevelEl.textContent = `МАКС (Ур. ${state.implantLevel}) [+${bonusPercent}%]`;
@@ -346,6 +555,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Делаем функцию доступной снаружи (для performActualReset)
+    window.updateShopUI = updateShopUI;
     setInterval(updateShopUI, 500);
 
     // --- ЛОГИКА ПОКУПОК ---
@@ -353,34 +564,26 @@ document.addEventListener('DOMContentLoaded', () => {
         buyClickBtn.addEventListener('click', () => {
             const cost = getClickCost(state.clickLevel);
             if (state.brains >= cost && state.clickLevel < MAX_CLICK_LEVEL) {
-                state.brains -= cost;
-                state.clickLevel += 1;
-                recalculateStats();
-                updateUI(); saveGame(); updateShopUI();
+                state.brains -= cost; state.clickLevel += 1;
+                recalculateStats(); updateUI(); saveGame(); updateShopUI();
             }
         });
     }
-
     if (buyPassiveBtn) {
         buyPassiveBtn.addEventListener('click', () => {
             const cost = getPassiveCost(state.passiveLevel);
             if (state.brains >= cost && state.passiveLevel < MAX_PASSIVE_LEVEL) {
-                state.brains -= cost;
-                state.passiveLevel += 1;
-                recalculateStats();
-                updateUI(); saveGame(); updateShopUI();
+                state.brains -= cost; state.passiveLevel += 1;
+                recalculateStats(); updateUI(); saveGame(); updateShopUI();
             }
         });
     }
-
     if (buyImplantBtn) {
         buyImplantBtn.addEventListener('click', () => {
             const cost = getImplantCost(state.implantLevel);
             if (state.brains >= cost && state.implantLevel < MAX_IMPLANT_LEVEL) {
-                state.brains -= cost;
-                state.implantLevel += 1;
-                recalculateStats();
-                updateUI(); saveGame(); updateShopUI();
+                state.brains -= cost; state.implantLevel += 1;
+                recalculateStats(); updateUI(); saveGame(); updateShopUI();
             }
         });
     }
@@ -396,6 +599,60 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('shopTop');
         });
     }
+
+    // ==========================================
+    // КОСМЕТИКА: вкладка "Интерфейс"
+    // ==========================================
+    const cosmeticsSection = document.createElement('div');
+    cosmeticsSection.id = 'cosmetics-section';
+    cosmeticsSection.innerHTML = `<h3 class="shop-category-title">🎨 Интерфейс</h3><div id="cosmetics-list"></div>`;
+    if (shopWindow) shopWindow.appendChild(cosmeticsSection);
+
+    function renderCosmetics() {
+        const list = document.getElementById('cosmetics-list');
+        if (!list) return;
+        list.innerHTML = '';
+
+        COSMETICS_DB.forEach(item => {
+            const owned = (state.unlockedCosmetics || []).includes(item.id);
+            const canAfford = state.brains >= item.price;
+
+            const card = document.createElement('div');
+            card.className = 'cosmetic-card' + (owned ? ' owned' : '');
+            card.innerHTML = `
+                <div class="cosmetic-info">
+                    <div class="cosmetic-name">${item.name} ${owned ? '✅' : ''}</div>
+                    <div class="cosmetic-desc">${item.desc}</div>
+                </div>
+                <button class="cosmetic-buy" ${owned || !canAfford ? 'disabled' : ''}>
+                    ${owned ? 'Куплено' : formatNumber(item.price) + ' 🧠'}
+                </button>
+            `;
+
+            if (!owned) {
+                card.querySelector('.cosmetic-buy').addEventListener('click', () => {
+                    if (state.brains >= item.price && !state.unlockedCosmetics.includes(item.id)) {
+                        state.brains -= item.price;
+                        state.unlockedCosmetics.push(item.id);
+                        applyCosmetics();
+                        saveGame();
+                        updateUI();
+                        renderCosmetics();
+                        showToast(`✨ Куплено: ${item.name}!`);
+                    }
+                });
+            }
+            list.appendChild(card);
+        });
+    }
+
+    // Обновляем косметический магазин вместе с основным
+    const _origUpdateShopUI = updateShopUI;
+    window.updateShopUI = function () {
+        _origUpdateShopUI();
+        renderCosmetics();
+    };
+    renderCosmetics();
 
     // 3. ФИЗИКА (УСИЛЕННАЯ + ДОЛГОЕ СКОЛЬЖЕНИЕ)
     let isDragging = false;
@@ -446,33 +703,21 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => textEl.remove(), 1000);
     }
 
-    // --- ЗАКРЫТИЕ МАГАЗИНА (ЖЕСТКИЙ ФИКС) ---
+    // --- ЗАКРЫТИЕ МАГАЗИНА ---
     if (shopClose) {
         shopClose.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
+            e.preventDefault(); e.stopPropagation();
             shopWindow.style.display = 'none';
-
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            velocityX = 0;
-            velocityY = 0;
-            isDragging = false;
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+            velocityX = 0; velocityY = 0; isDragging = false;
         });
     }
 
     shopHeader.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
-
-        // Если кликнули по крестику — не начинаем перетаскивание
         if (e.target.closest('#shop-close')) return;
 
-        isDragging = true;
-        dragStartTime = Date.now();
-
+        isDragging = true; dragStartTime = Date.now();
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         velocityX = 0; velocityY = 0; lastMouseX = e.clientX; lastMouseY = e.clientY;
 
@@ -487,7 +732,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('pointermove', (e) => {
         if (!isDragging) return;
-
         velocityX = (e.clientX - lastMouseX) * 1.8;
         velocityY = (e.clientY - lastMouseY) * 1.8;
         lastMouseX = e.clientX; lastMouseY = e.clientY;
@@ -518,7 +762,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('shopTop', parseFloat(shopWindow.style.top));
 
         const dragDuration = Date.now() - dragStartTime;
-
         if (dragDuration > 30 && (Math.abs(velocityX) > 0.5 || Math.abs(velocityY) > 0.5)) {
             animateInertia();
         } else {
@@ -532,14 +775,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentLeft = parseFloat(shopWindow.style.left) || 0;
         let currentTop = parseFloat(shopWindow.style.top) || 0;
 
-        velocityX *= friction;
-        velocityY *= friction;
-
+        velocityX *= friction; velocityY *= friction;
         currentLeft += velocityX; currentTop += velocityY;
 
         if (currentLeft < 0) { currentLeft = 0; velocityX *= -bounceForce; triggerJelly('x', 0, currentTop); }
         else if (currentLeft + windowWidth > screenWidth) { currentLeft = screenWidth - windowWidth; velocityX *= -bounceForce; triggerJelly('x', currentLeft, currentTop); }
-
         if (currentTop < 0) { currentTop = 0; velocityY *= -bounceForce; triggerJelly('y', currentLeft, 0); }
         else if (currentTop + windowHeight > screenHeight) { currentTop = screenHeight - windowHeight; velocityY *= -bounceForce; triggerJelly('y', currentLeft, currentTop); }
 

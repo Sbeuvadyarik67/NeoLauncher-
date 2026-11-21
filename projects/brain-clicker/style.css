@@ -423,3 +423,270 @@ h1 {
     text-shadow: 0 0 10px rgba(255, 45, 138, 0.8);
     z-index: 200;
 }
+
+/* === МОДАЛЬНОЕ ОКНО СБРОСА === */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    /* Темное затемнение */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    backdrop-filter: blur(4px);
+    /* Размытие фона для фокуса */
+}
+
+.modal-content {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 30px 40px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    max-width: 400px;
+    width: 90%;
+    animation: modalPop 0.2s ease-out;
+}
+
+@keyframes modalPop {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: #ff4444;
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.modal-content p {
+    color: #aaa;
+    font-size: 15px;
+    margin-bottom: 25px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.modal-buttons button {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 100px;
+}
+
+.btn-no {
+    background: #333;
+    color: #fff;
+}
+
+.btn-no:hover {
+    background: #444;
+}
+
+.btn-yes {
+    background: #555;
+    /* Серый, пока недоступен */
+    color: #999;
+    cursor: not-allowed;
+}
+
+.btn-yes:not(:disabled) {
+    background: #ff4444;
+    color: white;
+    cursor: pointer;
+}
+
+.btn-yes:not(:disabled):hover {
+    background: #ff6666;
+    transform: scale(1.05);
+}
+
+.btn-yes.ready {
+    animation: pulseRed 1s infinite;
+}
+
+@keyframes pulseRed {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 68, 68, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 68, 68, 0);
+    }
+}
+
+/* Убираем серый фон у отключенных кнопок косметики */
+.cosmetic-buy:disabled {
+    background: transparent !important;
+    color: #4caf50 !important;
+    /* Зеленый цвет для "Куплено" */
+    border: none !important;
+    cursor: default !important;
+    font-weight: normal !important;
+}
+
+/* ==========================================
+   КОСМЕТИКА (Визуальные улучшения)
+   ========================================== */
+
+/* Заголовок категории в магазине */
+.shop-category-title {
+    color: #aaa;
+    text-align: center;
+    margin: 25px 0 15px;
+    border-top: 1px solid rgba(255, 45, 138, 0.3);
+    padding-top: 20px;
+    font-size: 16px;
+}
+
+/* Карточки косметики */
+.cosmetic-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 45, 138, 0.3);
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.cosmetic-card.owned {
+    border-color: #4caf50;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.cosmetic-info {
+    flex: 1;
+    text-align: left;
+}
+
+.cosmetic-name {
+    font-weight: bold;
+    font-size: 14px;
+    color: #fff;
+}
+
+.cosmetic-desc {
+    font-size: 11px;
+    color: #888;
+    margin-top: 3px;
+}
+
+.cosmetic-buy {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #ff2d8a;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    box-shadow: 0 0 10px rgba(255, 45, 138, 0.3);
+}
+
+.cosmetic-buy:hover:not(:disabled) {
+    background: #ff5c9d;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 45, 138, 0.6);
+}
+
+/* Метка "Куплено" (вместо кнопки) */
+.cosmetic-owned-label {
+    color: #4caf50;
+    font-weight: bold;
+    font-size: 14px;
+    padding: 8px 14px;
+}
+
+/* --- ВИЗУАЛЬНЫЕ ЭФФЕКТЫ --- */
+
+/* 1. Цветные частицы (JS сам меняет цвет, тут только жирный шрифт) */
+body.cosmetic-colorful-clicks .floating-number {
+    font-weight: 900;
+}
+
+/* 2. Нейронный фон */
+body.cosmetic-neural-bg {
+    background-color: #0a0810 !important;
+    background-image:
+        linear-gradient(rgba(255, 45, 138, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 45, 138, 0.05) 1px, transparent 1px) !important;
+    background-size: 40px 40px !important;
+    animation: neuralScroll 60s linear infinite;
+}
+
+@keyframes neuralScroll {
+    from {
+        background-position: 0 0;
+    }
+
+    to {
+        background-position: 40px 40px;
+    }
+}
+
+/* 3. Золотой статус */
+body.cosmetic-gold-status #score,
+body.cosmetic-gold-status #clicks,
+body.cosmetic-gold-status #per-sec {
+    background: linear-gradient(45deg, #ffd700, #fff3a0, #ffd700, #b8860b);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: goldShine 4s ease infinite;
+    font-weight: 900;
+}
+
+@keyframes goldShine {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* 4. Неоновый мозг (базовое холодное свечение, JS догревает его до красного) */
+body.cosmetic-neon-brain #brain {
+    filter: drop-shadow(0 0 15px rgba(180, 0, 255, 0.6)) drop-shadow(0 0 30px rgba(120, 0, 255, 0.3));
+    transition: transform 0.1s ease, filter 0.15s ease-out;
+}
+
+body.cosmetic-neon-brain #brain:active {
+    transform: scale(0.94);
+}

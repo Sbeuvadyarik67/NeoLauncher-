@@ -23,17 +23,19 @@
     },
     "brain-clicker": {
       "name": "🧠 Brain Clicker",
-      "version": "2.0.0",
+      "version": "3.0.0",
       "path": "projects/brain-clicker/index.html",
       "icon": "🖱️🧠",
       "color": "#ff2d8a",
-      "description": "Кликер с мозгами: качай клик, нейро-сеть и имплант. Синергия, магазин с физикой и оффлайн-доход.",
+      "description": "Кликер с ребалансом экономики, магазином косметики (неоновый мозг с нагревом, золотой статус, нейронный фон), двойным подтверждением сброса и физикой магазина.",
       "tags": [
         "Game",
         "Clicker",
         "HTML",
         "Upgrades",
-        "Physics"
+        "Physics",
+        "Cosmetics",
+        "Balance"
       ],
       "type": "html",
       "launches": 0,

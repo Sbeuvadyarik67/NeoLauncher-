@@ -24,7 +24,7 @@ class NeoLauncher:
         self.theme_name = "neon"
         self.root.configure(bg=THEMES[self.theme_name]["bg"])
 
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             self.base_dir = os.path.dirname(sys.executable)
         else:
             self.base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -53,7 +53,7 @@ class NeoLauncher:
     def load_manifest(self):
         try:
             if os.path.exists(self.manifest_path):
-                with open(self.manifest_path, 'r', encoding='utf-8') as f:
+                with open(self.manifest_path, "r", encoding="utf-8") as f:
                     return json.load(f)
         except Exception:
             pass
@@ -63,7 +63,7 @@ class NeoLauncher:
         default = {"theme": "neon"}
         try:
             if os.path.exists(self.settings_path):
-                with open(self.settings_path, 'r', encoding='utf-8') as f:
+                with open(self.settings_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     for k, v in default.items():
                         if k not in data:
@@ -75,7 +75,7 @@ class NeoLauncher:
 
     def save_settings(self):
         try:
-            with open(self.settings_path, 'w', encoding='utf-8') as f:
+            with open(self.settings_path, "w", encoding="utf-8") as f:
                 json.dump(self.settings, f, indent=2, ensure_ascii=False)
         except Exception:
             pass
@@ -108,7 +108,7 @@ class NeoLauncher:
             text="\u2726  NeoBrain Launcher",
             font=("Segoe UI Light", 34),
             bg=self.C["bg"],
-            fg=self.C["text"]
+            fg=self.C["text"],
         )
         self.title_label.pack(side=tk.LEFT)
 
@@ -134,7 +134,7 @@ class NeoLauncher:
             text="\u2726  \u0421\u0418\u0421\u0422\u0415\u041c\u0410 \u0410\u041a\u0422\u0418\u0412\u041d\u0410",
             font=("Segoe UI", 12),
             bg=self.C["bg"],
-            fg=self.C["muted"]
+            fg=self.C["muted"],
         )
         self.status_label.pack(anchor=tk.W, padx=40, pady=(8, 0))
 
@@ -149,7 +149,7 @@ class NeoLauncher:
             text="\u2726  \u0412\u0421\u0415 \u041f\u0420\u041e\u0415\u041a\u0422\u042b \u0412 \u041e\u0414\u041d\u041e\u0419 \u041f\u0410\u041f\u041a\u0415  \u2726",
             font=("Segoe UI", 9),
             bg=self.C["bg"],
-            fg=self.C["dim"]
+            fg=self.C["dim"],
         )
         self.footer_label.pack(side=tk.BOTTOM, pady=(0, 15))
 
@@ -163,7 +163,7 @@ class NeoLauncher:
         """Приглушает яркий цвет проекта под Claude-тему."""
         h = hex_color.lstrip("#")
         try:
-            r, g, b = (int(h[i:i+2], 16) for i in (0, 2, 4))
+            r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))
         except Exception:
             return hex_color
 
@@ -206,15 +206,18 @@ class NeoLauncher:
 
         self.root.configure(bg=c["bg"])
         self._main.config(bg=c["bg"])
-        self._top_bar.config(bg=c["bg"])   # ← ФИКС: верхняя панель
+        self._top_bar.config(bg=c["bg"])  # ← ФИКС: верхняя панель
 
         self.title_label.config(bg=c["bg"], fg=c["text"])
         self.status_label.config(bg=c["bg"], fg=c["muted"])
         self.footer_label.config(bg=c["bg"], fg=c["dim"])
-        self.theme_btn.config(text=self._theme_btn_text(),
-                             bg=c["card_top"], fg=c["muted"],
-                             activebackground=c["card_active"],
-                             activeforeground=c["text"])
+        self.theme_btn.config(
+            text=self._theme_btn_text(),
+            bg=c["card_top"],
+            fg=c["muted"],
+            activebackground=c["card_active"],
+            activeforeground=c["text"],
+        )
         self.sep.config(bg=c["separator"])
         self.cards_container.config(bg=c["bg"])
 
@@ -238,14 +241,17 @@ class NeoLauncher:
 
         projects = self.manifest.get("projects", {})
         if not projects:
-            self.status_label.config(text="\u274c \u041d\u0435\u0442 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432")
+            self.status_label.config(
+                text="\u274c \u041d\u0435\u0442 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432"
+            )
             return
 
         # Откладываем рендер — чтобы контейнер получил реальные размеры
         self.root.after(30, lambda: self._render_grid(projects))
 
         self.status_label.config(
-            text=f"\u2726  {len(projects)} \u041f\u0420\u041e\u0415\u041a\u0422\u041e\u0412 \u0413\u041e\u0422\u041e\u0412\u042b \u041a \u0417\u0410\u041f\u0423\u0421\u041a\u0423")
+            text=f"\u2726  {len(projects)} \u041f\u0420\u041e\u0415\u041a\u0422\u041e\u0412 \u0413\u041e\u0422\u041e\u0412\u042b \u041a \u0417\u0410\u041f\u0423\u0421\u041a\u0423"
+        )
 
     # ============================================================
     # СЕТКА
@@ -373,7 +379,7 @@ class NeoLauncher:
             highlightbackground=c["border_dim"],
             highlightthickness=1,
             width=card_w,
-            height=card_h
+            height=card_h,
         )
         card.place(x=0, y=0, width=card_w, height=card_h)
         card.pack_propagate(False)
@@ -385,11 +391,7 @@ class NeoLauncher:
         inner.pack(fill=tk.BOTH, expand=True, padx=18, pady=(18, 18))
 
         tk.Label(
-            inner,
-            text=icon,
-            font=("Segoe UI", 28),
-            bg=c["card_top"],
-            fg=color
+            inner, text=icon, font=("Segoe UI", 28), bg=c["card_top"], fg=color
         ).pack(pady=(0, 12))
 
         tk.Label(
@@ -399,7 +401,7 @@ class NeoLauncher:
             bg=c["card_top"],
             fg=c["text"],
             wraplength=card_w - 40,
-            justify=tk.CENTER
+            justify=tk.CENTER,
         ).pack()
 
         # === ВЕРСИЯ ===
@@ -411,7 +413,7 @@ class NeoLauncher:
                 font=("Segoe UI", 9),
                 bg=c["card_top"],
                 fg=c["dim"],
-                justify=tk.CENTER
+                justify=tk.CENTER,
             ).pack(pady=(2, 4))
 
         if desc:
@@ -422,12 +424,16 @@ class NeoLauncher:
                 bg=c["card_top"],
                 fg=c["muted"],
                 wraplength=card_w - 45,
-                justify=tk.CENTER
+                justify=tk.CENTER,
             ).pack(pady=(6, 8))
 
         full_path = os.path.join(self.base_dir, path)
         exists = os.path.exists(full_path)
-        status_text = "\u2726 \u0413\u041e\u0422\u041e\u0412" if exists else "\u2727 \u041d\u0415 \u041d\u0410\u0419\u0414\u0415\u041d"
+        status_text = (
+            "\u2726 \u0413\u041e\u0422\u041e\u0412"
+            if exists
+            else "\u2727 \u041d\u0415 \u041d\u0410\u0419\u0414\u0415\u041d"
+        )
         status_color = c["success"] if exists else c["error"]
 
         tk.Label(
@@ -435,7 +441,7 @@ class NeoLauncher:
             text=status_text,
             font=("Segoe UI", 10),
             bg=c["card_top"],
-            fg=status_color
+            fg=status_color,
         ).pack()
 
         tk.Button(
@@ -502,9 +508,11 @@ class NeoLauncher:
 
             # ← ФИКС: рамка ВСЕГДА одинаковая — без "щупанья" краёв
             if i == self.active_index:
-                card.config(bg=c["card_active"],
-                            highlightthickness=1,
-                            highlightbackground=c["border_dim"])
+                card.config(
+                    bg=c["card_active"],
+                    highlightthickness=1,
+                    highlightbackground=c["border_dim"],
+                )
                 inner.config(bg=c["card_active"])
                 stripe.config(bg=color)
                 for child in inner.winfo_children():
@@ -514,9 +522,11 @@ class NeoLauncher:
                         except Exception:
                             pass
             else:
-                card.config(bg=c["card_top"],
-                            highlightthickness=1,
-                            highlightbackground=c["border_dim"])
+                card.config(
+                    bg=c["card_top"],
+                    highlightthickness=1,
+                    highlightbackground=c["border_dim"],
+                )
                 inner.config(bg=c["card_top"])
                 stripe.config(bg=color)
                 for child in inner.winfo_children():
@@ -533,48 +543,76 @@ class NeoLauncher:
     def launch_project(self, project_id):
         data = self.manifest["projects"].get(project_id)
         if not data:
-            messagebox.showerror("Error", f"\u041f\u0440\u043e\u0435\u043a\u0442 {project_id} \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d!")
+            messagebox.showerror(
+                "Error",
+                f"\u041f\u0440\u043e\u0435\u043a\u0442 {project_id} \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d!",
+            )
             return
 
         path = os.path.join(self.base_dir, data.get("path", ""))
         if not os.path.exists(path):
-            messagebox.showerror("Error", f"\u0424\u0430\u0439\u043b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d:\n{path}")
+            messagebox.showerror(
+                "Error",
+                f"\u0424\u0430\u0439\u043b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d:\n{path}",
+            )
             return
 
         try:
-            self.status_label.config(text=f"\U0001f680  \u0417\u0410\u041f\u0423\u0421\u041a {data['name']}...")
+            self.status_label.config(
+                text=f"\U0001f680  \u0417\u0410\u041f\u0423\u0421\u041a {data['name']}..."
+            )
 
             if project_id == "neospace":
                 os.startfile(path)
-                self.root.after(3000, lambda: self.status_label.config(
-                    text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d"))
+                self.root.after(
+                    3000,
+                    lambda: self.status_label.config(
+                        text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d"
+                    ),
+                )
                 return
 
             if data.get("type") == "html":
                 import webbrowser
+
                 webbrowser.open(f"file:///{path.replace(os.sep, '/')}")
-                self.root.after(2000, lambda: self.status_label.config(
-                    text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d"))
+                self.root.after(
+                    2000,
+                    lambda: self.status_label.config(
+                        text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d"
+                    ),
+                )
                 return
 
             if data.get("type") == "python":
-                python_exe = shutil.which('python') or shutil.which('python3') or 'python'
+                python_exe = (
+                    shutil.which("python") or shutil.which("python3") or "python"
+                )
                 project_dir = os.path.dirname(path)
                 subprocess.Popen(
                     [python_exe, path],
                     cwd=project_dir,
-                    creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0,
+                    creationflags=(
+                        subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0
+                    ),
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    stdin=subprocess.DEVNULL
+                    stdin=subprocess.DEVNULL,
                 )
             else:
                 subprocess.Popen([path], shell=False)
 
-            self.status_label.config(text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d")
+            self.status_label.config(
+                text=f"\u2726  {data['name']} \u0417\u0410\u041f\u0423\u0429\u0415\u041d"
+            )
         except Exception as e:
-            messagebox.showerror("Error", f"\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c {data['name']}:\n{str(e)}")
-            self.status_label.config(text=f"\u274c  \u041e\u0428\u0418\u0411\u041a\u0410 \u0417\u0410\u041f\u0423\u0421\u041a\u0410 {data['name']}")
+            messagebox.showerror(
+                "Error",
+                f"\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c {data['name']}:\n{str(e)}",
+            )
+            self.status_label.config(
+                text=f"\u274c  \u041e\u0428\u0418\u0411\u041a\u0410 \u0417\u0410\u041f\u0423\u0421\u041a\u0410 {data['name']}"
+            )
 
 
 if __name__ == "__main__":
